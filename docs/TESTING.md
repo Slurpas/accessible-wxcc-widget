@@ -9,7 +9,7 @@ npm run check     # tests + production build + bundle verification
 
 ### Results: 2 Nov 2026, Node 24.13, Vitest 5.1, jsdom 30.1
 
-**10 test files, 129 tests, all passed.**
+**11 test files, 135 tests, all passed.**
 
 | File | Tests | Covers |
 |---|---|---|
@@ -20,6 +20,7 @@ npm run check     # tests + production build + bundle verification
 | `team-dashboard.test.js` | 10 | Team filter, self excluded, unfiltered case (logged, not shown), Available + Idle requests, no request without a UUID profile, **failure keeps last list and never marks OFFLINE**, failure response type, refresh limits (default 30 s, min 15 s), refresh on return to the tab, stale flag, timer cleanup |
 | `widget.test.js` | 18 | Whole Web Component with the mock adapter: rendering, headings in reading order (status, call, buttons, team), dense grid for many idle codes, "updates automatically" text, aria-pressed, pending → confirmed + live announcement, **focus not stolen**, failure announced assertively, disabled without agentId, external change, call lifecycle and spoken number, team filter/counts, team off by attribute, **team failure does not affect status buttons**, offline → "STATUS NOT VERIFIED", theme/text-size preferences (only prefs stored), unmount cleanup + remount, properties set before upgrade |
 | `desktop-sdk.test.js` | 2 | Real adapter with a fake SDK: unmount + remount keeps `stateChangeV2` working, `Desktop.config.cleanup()` never called, only own listeners removed |
+| `team-probe.test.js` | 6 | Read-only team probe: buddy counts, real-time dataset results and data shapes; **no names, e-mail, numbers, IDs or tokens in the report**; every subscription closed; no state change; works without Desktop |
 | `outside-desktop.test.js` | 3 | Real adapter: outside Desktop shows a diagnostic, buttons disabled, mock **not** used even with `mock="true"` |
 | `contrast.test.js` | 26 | WCAG contrast of every colour pair in both themes: chips ≥ 4.5:1, body text ≥ 7:1, borders/focus ≥ 3:1 |
 | `security.test.js` | 7 | No secrets, no direct network calls, no token access, storage only for prefs, no innerHTML/eval, no third-party URLs, logger strips payloads |

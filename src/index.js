@@ -11,4 +11,11 @@ if (typeof customElements !== 'undefined' && !customElements.get(ELEMENT_NAME)) 
   customElements.define(ELEMENT_NAME, AccessibleWxccWidget);
 }
 
+// Read-only diagnostic for administrators (DevTools console inside Desktop):
+//   await accessibleWxccProbe()
+// See src/diagnostics/team-probe.js. It changes nothing and reports no names.
+if (typeof globalThis.accessibleWxccProbe === 'undefined') {
+  globalThis.accessibleWxccProbe = (options) => import('./diagnostics/team-probe.js').then((m) => m.runTeamProbe(options));
+}
+
 export { AccessibleWxccWidget };

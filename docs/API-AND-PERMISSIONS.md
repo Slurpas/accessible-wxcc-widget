@@ -52,6 +52,31 @@ The team module is isolated (`team-dashboard.js` + `team-list.js`), so a new dat
 only needs to provide `{ rows: [{id, name, display}], readyCount }`. The UI already
 supports BUSY, WRAP-UP and OFFLINE rows.
 
+### Investigation, Nov 2026: seeing every logged-in agent
+
+| Source | All logged-in agents? | With the agent's own session? |
+|---|---|---|
+| `buddyAgentsV2` / REST `buddyList` | No. SDK accepts only `Available`, `Idle`, `RONA`; Cisco's reference says only Available or Idle agents are returned, also when `state` is omitted. | Yes |
+| Get Agent Activities / Search API (`agentSession`) | Historical records with a time range, not a live view. | No: needs a token with organisation read scope (`cjp:config_read`). |
+| Desktop real-time data (`Desktop.rtdwc` / `window.wxcc.rtdwc`) | Unknown: in the official SDK but undocumented (dataset names and entitlements). | Yes, if allowed |
+| Server-side service with a Webex service app (agent state webhooks + snapshot) | Yes | Secret stays server-side; needs hosting and a security review. |
+
+**Team probe.** To find out whether the real-time channel works for a given user,
+sign in to Desktop as that user, open DevTools (F12) → Console and run:
+
+```js
+await accessibleWxccProbe()
+```
+
+It is read-only (no state change, no token request, every subscription is closed
+again) and the printed report contains only structure: key names, types, counts
+and state words such as `Available`. No names, IDs, numbers, e-mail addresses or
+tokens. Dataset names are guessed; to try the names Desktop itself uses, search
+Desktop's sources in DevTools (Ctrl+Shift+F) for `datasetName` and pass them:
+`await accessibleWxccProbe({ datasets: ['name1', 'name2'] })`.
+
+Run it once as a supervisor and once as an ordinary agent; entitlements may differ.
+
 ## Configuration in Control Hub (for the pilot agent)
 
 - Desktop profile: telephony channel enabled; the Idle codes you want as buttons
