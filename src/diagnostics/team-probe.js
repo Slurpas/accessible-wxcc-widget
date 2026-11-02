@@ -21,7 +21,7 @@
 import { connectDesktop } from '../services/desktop-sdk.js';
 import { REASON_FIELDS } from '../services/team-dashboard.js';
 
-export const PROBE_VERSION = 2;
+export const PROBE_VERSION = 3;
 
 // Likely dataset names. The real names are not documented; add more with
 // { datasets: [...] } after searching Desktop's sources for "datasetName".
@@ -45,7 +45,8 @@ export const CANDIDATE_DATASETS = [
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
 const EMAIL_RE = /[^\s@]+@[^\s@]+/g;
 const DIGITS_RE = /\+?\d[\d\s-]{3,}\d/g;
-const STATE_KEY_RE = /state|status|type|phase/i;
+// Keys whose short one-word values are vocabulary (states, reason codes), not personal data.
+const STATE_KEY_RE = /state|status|type|phase|idleCode|auxCode|reason|channel/i;
 const STATE_WORD_RE = /^[A-Za-z][A-Za-z_-]{1,30}$/;
 
 /** True for keys that are really data (an agent ID, an e-mail, a name with a space). */
@@ -95,11 +96,11 @@ export function describeShape(value, depth = 3, key = '') {
       return { type: 'map', size: keys.length, item: depth > 0 ? describeShape(first, depth - 1) : typeof first };
     }
     const out = { type: 'object', keys: {} };
-    for (const k of keys.slice(0, 40)) {
+    for (const k of keys.slice(0, 80)) {
       if (isIdLike(k)) continue;
       out.keys[k] = depth > 0 ? describeShape(value[k], depth - 1, k) : typeOf(value[k]);
     }
-    if (keys.length > 40) out.moreKeys = keys.length - 40;
+    if (keys.length > 80) out.moreKeys = keys.length - 80;
     return out;
   }
   if (typeof value === 'string' && STATE_KEY_RE.test(key) && STATE_WORD_RE.test(value)) return `string "${value}"`;
@@ -232,6 +233,56 @@ export function datasetCatalog(rt) {
   return out;
 }
 
+/** Dataset names from a "Valid datasets are: [a, b, c]" server answer. */
+export function validDatasetsFrom(err) {
+  const body = err && err.response && err.response.data;
+  const text = [err && err.message, body && (body.message || body.error || body.description), typeof body === 'string' ? body : '']
+    .filter((t) => typeof t === 'string')
+    .join(' ');
+  const m = /Valid datasets are:\s*\[([^\]]+)\]/i.exec(text);
+  return m ? m[1].split(',').map((n) => n.trim()).filter((n) => NAME_RE.test(n)) : [];
+}
+
+async function subscribeRound(rt, names, waitMs, valid) {
+  const results = names.map((name) => ({ dataset: name, accepted: false, updates: 0, errors: 0, firstUpdate: null, firstError: null, closed: false }));
+  const fail = (r, err) => {
+    for (const n of validDatasetsFrom(err)) valid.add(n);
+    if (r.firstError) return;
+    r.firstError = /Valid datasets are/i.test(errorText(err)) ? 'Invalid dataset (see validDatasets)' : errorText(err);
+  };
+  const subs = await Promise.all(
+    results.map(async (r) => {
+      try {
+        const sub = await withTimeout(
+          rt.subscribe({
+            datasetName: r.dataset,
+            update: (data) => {
+              r.updates += 1;
+              if (!r.firstUpdate) r.firstUpdate = describeShape(data, 4);
+            },
+            error: (err) => {
+              r.errors += 1;
+              fail(r, err);
+            },
+          }),
+          5000,
+          'subscribe',
+        );
+        r.accepted = true;
+        return sub;
+      } catch (err) {
+        fail(r, err);
+        return null;
+      }
+    }),
+  );
+  await new Promise((resolve) => setTimeout(resolve, waitMs));
+  subs.forEach((sub, i) => {
+    results[i].closed = closeSubscription(sub);
+  });
+  return results;
+}
+
 async function probeRtdwc(win, extra, waitMs) {
   const out = { wxccPresent: false, rtdwcPresent: false };
   const wxcc = safeGet(win, 'wxcc');
@@ -253,37 +304,13 @@ async function probeRtdwc(win, extra, waitMs) {
   out.catalog = datasetCatalog(rt);
   // Prefer Desktop's own dataset names; fall back to guesses only if none are found.
   const datasets = [...new Set([...extra, ...(out.catalog.names.length ? out.catalog.names : CANDIDATE_DATASETS)])].filter((n) => NAME_RE.test(n));
-  const results = datasets.map((name) => ({ dataset: name, accepted: false, updates: 0, errors: 0, firstUpdate: null, firstError: null, closed: false }));
-  const subs = await Promise.all(
-    results.map(async (r) => {
-      try {
-        const sub = await withTimeout(
-          rt.subscribe({
-            datasetName: r.dataset,
-            update: (data) => {
-              r.updates += 1;
-              if (!r.firstUpdate) r.firstUpdate = describeShape(data);
-            },
-            error: (err) => {
-              r.errors += 1;
-              if (!r.firstError) r.firstError = errorText(err);
-            },
-          }),
-          5000,
-          'subscribe',
-        );
-        r.accepted = true;
-        return sub;
-      } catch (err) {
-        r.firstError = r.firstError || errorText(err);
-        return null;
-      }
-    }),
-  );
-  await new Promise((resolve) => setTimeout(resolve, waitMs));
-  subs.forEach((sub, i) => {
-    results[i].closed = closeSubscription(sub);
-  });
+  const valid = new Set();
+  let results = await subscribeRound(rt, datasets, waitMs, valid);
+  // Webex answers an unknown name with its list of valid datasets: try those too.
+  const tried = new Set(datasets);
+  const more = [...valid].filter((n) => !tried.has(n) && NAME_RE.test(n));
+  if (more.length) results = results.concat(await subscribeRound(rt, more.slice(0, 40), waitMs, valid));
+  out.validDatasets = [...valid].sort();
   out.results = results;
   out.datasetsWithData = results.filter((r) => r.updates > 0).map((r) => r.dataset);
   return out;

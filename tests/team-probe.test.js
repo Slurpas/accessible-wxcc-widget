@@ -122,6 +122,35 @@ describe('team probe', () => {
     expect(r.realTimeData.results[0].firstError).toBe('Request failed with status code 400: filter.agentId missing for <id>');
   });
 
+  it('tries the valid datasets Webex lists when a name is rejected', async () => {
+    const { win, connect } = setup();
+    win.wxcc.rtdwc.DATASET = { TEAMSTATS: 'wxcc.rtd.teamstats' };
+    win.wxcc.rtdwc.subscribe = vi.fn(async ({ datasetName, update, error }) => {
+      if (datasetName === 'wxcc.rtd.teamstats') {
+        const err = new Error('Request failed with status code 400');
+        err.response = { data: { message: 'Invalid datasets: wxcc.rtd.teamstats\nValid datasets are: [wxcc.rtd.teamchannelstats, wxcc.rtd.agentchannelstats]' } };
+        error(err);
+        throw err;
+      }
+      if (datasetName === 'wxcc.rtd.agentchannelstats') {
+        setTimeout(() =>
+          update({ datasetValues: [{ key: '9f0c1a2b-3c4d-4e5f-8a9b-0c1d2e3f4a5b', data: { agentName: 'Anna Svensson', currentState: 'Idle', idleCodeName: 'Lunch', teamName: 'Team Anna Svensson' } }] }),
+        );
+      }
+      return () => {};
+    });
+    const r = await runTeamProbe({ win, connect, waitMs: 20, print: false });
+    const rt = r.realTimeData;
+    expect(rt.validDatasets).toEqual(['wxcc.rtd.agentchannelstats', 'wxcc.rtd.teamchannelstats']);
+    expect(rt.results.map((x) => x.dataset)).toEqual(['wxcc.rtd.teamstats', 'wxcc.rtd.teamchannelstats', 'wxcc.rtd.agentchannelstats']);
+    expect(rt.results[0].firstError).toBe('Invalid dataset (see validDatasets)');
+    expect(rt.datasetsWithData).toEqual(['wxcc.rtd.agentchannelstats']);
+    const agent = rt.results.find((x) => x.dataset === 'wxcc.rtd.agentchannelstats');
+    const data = agent.firstUpdate.keys.datasetValues.item.keys.data.keys;
+    expect(data).toEqual({ agentName: 'string', currentState: 'string "Idle"', idleCodeName: 'string "Lunch"', teamName: 'string' });
+    expect(JSON.stringify(r)).not.toMatch(/Anna|9f0c1a2b/);
+  });
+
   it('reads no catalogue from objects without one', () => {
     expect(datasetCatalog({})).toEqual({ constants: {}, factoryApi: [], names: [] });
   });
