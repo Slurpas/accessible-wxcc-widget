@@ -20,7 +20,8 @@ import { DISPLAY, compareTeamMembers, mapBuddyState } from '../utils/status-mapp
 import { log, errorReason } from '../utils/logger.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-export const MIN_REFRESH_SECONDS = 30;
+export const MIN_REFRESH_SECONDS = 15;
+export const DEFAULT_REFRESH_SECONDS = 30;
 const MANUAL_REFRESH_GAP_MS = 10000;
 
 /** Build a display name from the fields Cisco has used across versions. */
@@ -60,9 +61,9 @@ export function mapBuddyAgents(lists, { teamId, selfId }) {
 }
 
 export class TeamService {
-  constructor({ adapter, refreshSeconds = 60, now = () => Date.now() }) {
+  constructor({ adapter, refreshSeconds = DEFAULT_REFRESH_SECONDS, now = () => Date.now() }) {
     this.adapter = adapter;
-    this.refreshMs = Math.max(MIN_REFRESH_SECONDS, Number(refreshSeconds) || 60) * 1000;
+    this.refreshMs = Math.max(MIN_REFRESH_SECONDS, Number(refreshSeconds) || DEFAULT_REFRESH_SECONDS) * 1000;
     this.now = now;
     this.changes = new Emitter();
     this.teamId = '';
@@ -77,6 +78,11 @@ export class TeamService {
       teamFilterApplied: false,
       lastSuccess: 0,
       error: '',
+      refreshSeconds: this.refreshMs / 1000,
+    };
+    // Coming back to the Desktop tab: update at once if the list is older than one interval.
+    this._onVisible = () => {
+      if (document.visibilityState === 'visible' && this.now() - this.state.lastSuccess >= this.refreshMs) this.refresh();
     };
   }
 
@@ -87,6 +93,7 @@ export class TeamService {
 
   start() {
     this.refresh();
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', this._onVisible);
     this._timer = setInterval(() => {
       // Only poll while someone can see it; Chrome throttles hidden tabs anyway.
       if (typeof document === 'undefined' || document.visibilityState !== 'hidden') this.refresh();
@@ -94,6 +101,7 @@ export class TeamService {
   }
 
   stop() {
+    if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', this._onVisible);
     clearInterval(this._timer);
     this._timer = null;
     this.changes.clear();

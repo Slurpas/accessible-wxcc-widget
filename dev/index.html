@@ -11,7 +11,7 @@
       .controls { display: flex; flex-wrap: wrap; gap: 6px; }
       .controls button, .controls select { font-size: 14px; padding: 6px 10px; }
       .stage { padding: 16px; }
-      .frame { background: #000; border: 2px dashed #aaa; height: 900px; overflow: hidden; resize: horizontal; margin: 0 auto; }
+      .frame { background: #000; border: 2px dashed #aaa; height: 760px; overflow: hidden; resize: both; margin: 0 auto; }
       .warn { background: #ffd60a; color: #000; padding: 6px 10px; font-weight: bold; display: inline-block; margin-bottom: 8px; }
     </style>
   </head>
@@ -24,7 +24,8 @@
           <select id="width">
             <option value="320px">Narrow sidebar (320px)</option>
             <option value="600px" selected>Medium panel (600px)</option>
-            <option value="1200px">Wide custom page (1200px)</option>
+            <option value="900px">Wide panel (900px)</option>
+            <option value="1400px">Full Desktop page (1400px)</option>
           </select>
         </label>
         <button data-c="incomingCall">Incoming call</button>
@@ -50,7 +51,9 @@
       </div>
     </div>
     <script type="module">
-      import '../src/index.js';
+      // ?codes=many simulates a tenant with many, long idle-code names.
+      if (new URLSearchParams(location.search).get('codes') === 'many') document.getElementById('w').setAttribute('mock-codes', 'many');
+      await import('../src/index.js');
       const frame = document.getElementById('frame');
       document.getElementById('width').addEventListener('change', (e) => (frame.style.width = e.target.value));
       document.getElementById('controls').addEventListener('click', (e) => {

@@ -21,6 +21,26 @@ const IDLE_CODES = [
   { id: '00000000-0000-4000-8000-0000000000c5', name: 'RONA', isSystem: true, isDefault: false },
 ];
 
+// Large tenant with long names, for layout testing (dev harness: ?codes=many).
+const MANY_IDLE_CODES = [
+  ...IDLE_CODES,
+  ...[
+    'Meeting',
+    'Training',
+    'Coaching with team leader',
+    'Administrative work - back office',
+    'Email and case follow-up',
+    'Technical problem',
+    'Personal time',
+    'Outbound campaign preparation',
+    'Fika',
+    'System downtime - waiting for IT support',
+    'Quality review',
+    'Project work',
+    'End of shift',
+  ].map((name, i) => ({ id: `00000000-0000-4000-8000-0000000001${String(i).padStart(2, '0')}`, name, isSystem: false, isDefault: false })),
+];
+
 const TEAM = [
   { agentId: 'm-2', agentName: 'Demo Anna (mock)', teamId: TEAM_ID, state: 'Available' },
   { agentId: 'm-3', agentName: 'Demo Erik (mock)', teamId: TEAM_ID, state: 'Idle' },
@@ -29,7 +49,8 @@ const TEAM = [
   { agentId: 'm-9', agentName: 'Other Team Agent (mock)', teamId: 'mock-team-2', state: 'Available' },
 ];
 
-export function createMockAdapter({ latencyMs = 400 } = {}) {
+export function createMockAdapter({ latencyMs = 400, manyCodes = false } = {}) {
+  const idleCodes = manyCodes ? MANY_IDLE_CODES : IDLE_CODES;
   const listeners = new Map(); // eventName -> Set
   const tasks = new Map();
   let failNext = false;
@@ -37,7 +58,7 @@ export function createMockAdapter({ latencyMs = 400 } = {}) {
   let callSeq = 0;
   let channel = {
     agentState: 'Idle',
-    auxCodeId: IDLE_CODES[0].id,
+    auxCodeId: idleCodes[0].id,
     stateChangeTimestamp: Date.now(),
     stateChangeReason: 'Not Ready',
     pendingIdle: false,
@@ -101,7 +122,7 @@ export function createMockAdapter({ latencyMs = 400 } = {}) {
         agentProfileID: PROFILE_ID,
         teamId: TEAM_ID,
         teamName: 'Demo Team',
-        idleCodes: IDLE_CODES,
+        idleCodes: idleCodes,
         channelsStatesMap: { telephony: { ...channel, stateChangeTimestamp: Math.floor(channel.stateChangeTimestamp / 1000) } },
       };
     },
@@ -126,8 +147,8 @@ export function createMockAdapter({ latencyMs = 400 } = {}) {
       if (workType !== 'IDLE_CODE') return { meta: { page, totalPages: 1 }, data: [] };
       const start = page * pageSize;
       return {
-        meta: { page, pageSize, totalPages: Math.ceil(IDLE_CODES.length / pageSize), totalRecords: IDLE_CODES.length },
-        data: IDLE_CODES.slice(start, start + pageSize),
+        meta: { page, pageSize, totalPages: Math.ceil(idleCodes.length / pageSize), totalRecords: idleCodes.length },
+        data: idleCodes.slice(start, start + pageSize),
       };
     },
 
@@ -208,7 +229,7 @@ export function createMockAdapter({ latencyMs = 400 } = {}) {
       setOffline(v) {
         offline = !!v;
       },
-      idleCodes: IDLE_CODES,
+      idleCodes: idleCodes,
     },
   };
 

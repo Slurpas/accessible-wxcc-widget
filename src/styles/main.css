@@ -39,6 +39,13 @@
 }
 
 .awx-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6em;
+  min-height: 100%;
+}
+
+.awx-main {
   display: grid;
   gap: 0.6em;
   grid-template-columns: minmax(0, 1fr);
@@ -109,6 +116,9 @@
 
 /* ---------- Panels ---------- */
 .panel {
+  /* Each panel is a size container, so the big status text and phone number
+     scale to the panel's own width (cqi units), not the whole widget. */
+  container-type: inline-size;
   background: var(--awx-panel-bg);
   border: 2px solid var(--awx-border);
   border-radius: 12px;
@@ -223,7 +233,7 @@
 .state-buttons {
   display: grid;
   gap: 0.5em;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5em), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 8.5em), 1fr));
 }
 
 .state-btn {
@@ -236,14 +246,41 @@
   min-height: 80px;
   padding: 0.4em 0.6em;
   font: inherit;
-  font-size: 1.4em; /* 28px at normal size */
+  font-size: 1.2em; /* 24px at normal size */
   font-weight: 900;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
   border: 4px solid transparent;
   border-radius: 12px;
   cursor: pointer;
   text-align: center;
   overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* READY is the most used action: always first, full width and largest. */
+.state-btn-ready {
+  grid-column: 1 / -1;
+  font-size: 1.5em;
+  min-height: 88px;
+}
+
+/* Many idle codes: denser grid so they fit, labels still large and bold. */
+.state-buttons[data-density='many'] {
+  gap: 0.4em;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 9em), 1fr));
+}
+.state-buttons[data-density='many'] .state-btn:not(.state-btn-ready) {
+  min-height: 60px;
+  font-size: 1em;
+  padding: 0.3em 0.5em;
+  letter-spacing: 0;
+}
+.state-buttons[data-density='many'] .btn-icon {
+  font-size: 1em;
+}
+.state-buttons[data-density='many'] .btn-current {
+  font-size: max(0.75em, 14px);
 }
 
 .btn-icon {
@@ -253,7 +290,7 @@
 
 .btn-current {
   white-space: nowrap;
-  font-size: 0.5em;
+  font-size: max(0.6em, 14px);
   font-weight: 900;
   letter-spacing: 0.08em;
   padding: 0.15em 0.4em;
@@ -443,26 +480,55 @@
   }
 }
 
-@container awx (min-width: 900px) {
-  .awx-lower {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 0.6em;
+/* Wide: information on the left, buttons in their own column on the right.
+   When the widget has a fixed height (Desktop page), each column scrolls on
+   its own, so status, call and team stay on screen however many codes exist. */
+@container awx (min-width: 760px) {
+  .awx-grid {
+    height: 100%;
+  }
+  .awx-main {
+    flex: 1 1 auto;
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-areas:
+      'status buttons'
+      'call buttons'
+      'team buttons';
     align-items: start;
   }
-  .awx-top {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
-    gap: 0.6em;
-    align-items: stretch;
+  .panel-status { grid-area: status; }
+  .panel-call { grid-area: call; }
+  .panel-team { grid-area: team; max-height: 100%; overflow: auto; }
+  .panel-buttons {
+    grid-area: buttons;
+    align-self: stretch;
+    max-height: 100%;
+    overflow: auto;
+  }
+  /* Keep the team readable when the call panel is tall; if the page is too
+     short for both, the whole widget scrolls rather than hiding the call. */
+  .awx-main {
+    grid-template-rows: auto auto minmax(10em, 1fr);
   }
 }
 
-@container awx (max-width: 899px) {
-  .awx-lower,
-  .awx-top {
-    display: grid;
-    gap: 0.6em;
+/* Very wide (typical full Desktop page): the team gets its own column. */
+@container awx (min-width: 1150px) {
+  .awx-main {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 0.9fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas:
+      'status buttons team'
+      'call buttons team';
+  }
+  .panel-team {
+    align-self: stretch;
+  }
+  .panel-call {
+    max-height: 100%;
+    overflow: auto;
   }
 }
 

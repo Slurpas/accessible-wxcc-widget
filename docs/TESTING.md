@@ -9,7 +9,7 @@ npm run check     # tests + production build + bundle verification
 
 ### Results: 2 Nov 2026, Node 24.13, Vitest 5.1, jsdom 30.1
 
-**10 test files, 126 tests, all passed.**
+**10 test files, 129 tests, all passed.**
 
 | File | Tests | Covers |
 |---|---|---|
@@ -17,8 +17,8 @@ npm run check     # tests + production build + bundle verification
 | `auxiliary-codes.test.js` | 13 | Aux-code mapping (system codes excluded, default first, real IDs kept), colour rules, pagination with the documented payload, fallback, never-reject |
 | `agent-state.test.js` | 18 | Loading → error timeout, STORE map, OFFLINE, external changes, other channel/agent ignored, stale updates ignored, exact `stateChangeV2` payloads, **requested state not shown before confirmation**, rejection, `undefined` response, unconfirmed timeout, no agentId, double-click guard, listener cleanup |
 | `contact-events.test.js` | 17 | ANI/DNIS/queue extraction, outdial customer number, CAD fallback, hold, full lifecycle offer → connected → ANI update → hold → wrap-up → cleared, RONA, restore from task map (incl. Map-like observable; unknown shapes never blank the panel), multiple interactions, memory cleared on stop |
-| `team-dashboard.test.js` | 9 | Team filter, self excluded, unfiltered warning, Available + Idle requests, no request without a UUID profile, **failure keeps last list and never marks OFFLINE**, failure response type, refresh limits, stale flag, timer cleanup |
-| `widget.test.js` | 16 | Whole Web Component with the mock adapter: rendering, headings, aria-pressed, pending → confirmed + live announcement, **focus not stolen**, failure announced assertively, disabled without agentId, external change, call lifecycle and spoken number, team filter/counts, team off by attribute, **team failure does not affect status buttons**, offline → "STATUS NOT VERIFIED", theme/text-size preferences (only prefs stored), unmount cleanup + remount, properties set before upgrade |
+| `team-dashboard.test.js` | 10 | Team filter, self excluded, unfiltered warning, Available + Idle requests, no request without a UUID profile, **failure keeps last list and never marks OFFLINE**, failure response type, refresh limits (default 30 s, min 15 s), refresh on return to the tab, stale flag, timer cleanup |
+| `widget.test.js` | 18 | Whole Web Component with the mock adapter: rendering, headings in reading order (status, call, buttons, team), dense grid for many idle codes, "updates automatically" text, aria-pressed, pending → confirmed + live announcement, **focus not stolen**, failure announced assertively, disabled without agentId, external change, call lifecycle and spoken number, team filter/counts, team off by attribute, **team failure does not affect status buttons**, offline → "STATUS NOT VERIFIED", theme/text-size preferences (only prefs stored), unmount cleanup + remount, properties set before upgrade |
 | `desktop-sdk.test.js` | 2 | Real adapter with a fake SDK: unmount + remount keeps `stateChangeV2` working, `Desktop.config.cleanup()` never called, only own listeners removed |
 | `outside-desktop.test.js` | 3 | Real adapter: outside Desktop shows a diagnostic, buttons disabled, mock **not** used even with `mock="true"` |
 | `contrast.test.js` | 26 | WCAG contrast of every colour pair in both themes: chips ≥ 4.5:1, body text ≥ 7:1, borders/focus ≥ 3:1 |
@@ -31,7 +31,7 @@ Contact Center Desktop" message without throwing.
 
 ### Visual checks done in the demo harness
 
-- Narrow (320 px), medium (600 px) and wide (1200 px) containers; dark and light themes; text
+- Narrow (320 px), medium (600 px), two-column (900 px) and three-column (1400 px) containers, also with 17 long idle-code names (`dev/?codes=many`); dark and light themes; text
   size 100 % and 150 %. No horizontal scrolling at 320 px with Extra large text.
 - Pending/confirmed/failed status flows, call lifecycle, offline/online, unmount/remount.
 
@@ -56,7 +56,7 @@ Record results in the table (Pass/Fail + notes). Never put real customer numbers
 | T10 | Call ends | Customer hangs up; complete wrap-up | WRAP-UP while wrapping; panel clears to "No active call" after wrap-up. | |
 | T11 | Mid-call reload | During a call, switch page away and back, or reload Desktop | Call panel and status restored. | |
 | T12 | Disconnect | Unplug network / disable Wi-Fi for 30 s, then reconnect | Banner "CONNECTION LOST", status "STATUS NOT VERIFIED", then back to normal. | |
-| T13 | Team list | Second agent in same team toggles Ready/Not Ready | Row updates within 60 s (or press Refresh). Agents of other teams not shown. | |
+| T13 | Team list | Second agent in same team toggles Ready/Not Ready | Row updates within 30 s by itself (the panel says "Updates automatically every 30 seconds"); "Refresh now" is optional. Agents of other teams not shown. | |
 | T14 | Keyboard | Tab through all controls; Enter/Space activate | Visible yellow focus ring; logical order; focus stays on the button after a state change. | |
 | T15 | Screen reader | NVDA/JAWS: browse headings (H key), activate buttons, take a call | Headings "My status", "Change status", "My current call", "My team"; button names and "pressed" state read; status and call changes announced once; team refreshes are silent. | |
 | T16 | Failure handling | Temporarily remove an idle code from the profile, sign in again | Remaining codes shown; READY always works. | |

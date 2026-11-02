@@ -85,11 +85,11 @@ export const STRINGS = {
   teamStale: (time) => `Information may be out of date. Last updated ${time}.`,
   teamError: (time) =>
     time ? `CONNECTION ERROR. Showing last known list from ${time}.` : 'CONNECTION ERROR. Team list could not be loaded.',
-  teamUpdated: (time) => `Updated ${time}`,
+  teamUpdated: (time, seconds) => `Updates automatically every ${seconds} seconds. Last updated ${time}.`,
   teamScopeNote:
     'Webex lists only colleagues who are Ready or Not Ready. Colleagues on a call, in wrap-up or logged out are not shown.',
   teamUnfilteredNote: 'Team filter not available: showing all colleagues Webex offers for consult.',
-  refresh: 'Refresh team list',
+  refresh: 'Refresh now',
 
   // Settings
   themeDark: 'Dark theme',

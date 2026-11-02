@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { TeamService, mapBuddyAgents } from '../src/services/team-dashboard.js';
 import { DISPLAY } from '../src/utils/status-mapper.js';
-import { fakeAdapter } from './helpers.js';
+import { fakeAdapter, flush } from './helpers.js';
 
 const PROFILE = '11111111-2222-4333-8444-555555555555';
 
@@ -71,7 +71,8 @@ describe('TeamService', () => {
     let t = 0;
     const adapter = fakeAdapter({ getLatestData: () => ({ agentProfileID: PROFILE }) });
     const svc = new TeamService({ adapter, refreshSeconds: 5, now: () => t });
-    expect(svc.refreshMs).toBe(30000);
+    expect(svc.refreshMs).toBe(15000);
+    expect(new TeamService({ adapter }).refreshMs).toBe(30000); // default
     t = 20000;
     await svc.manualRefresh();
     t = 21000;
@@ -87,6 +88,37 @@ describe('TeamService', () => {
     expect(svc.isStale()).toBe(false);
     t += 10 * 60 * 1000;
     expect(svc.isStale()).toBe(true);
+  });
+
+  it('refreshes at once when the agent returns to the tab with an old list', async () => {
+    let t = 1000;
+    let visibility = 'visible';
+    const spy = vi.spyOn(document, 'visibilityState', 'get').mockImplementation(() => visibility);
+    const adapter = fakeAdapter({ getLatestData: () => ({ agentProfileID: PROFILE }) });
+    const svc = new TeamService({ adapter, now: () => t });
+    svc.start();
+    await flush();
+    expect(adapter.buddyAgentsV2).toHaveBeenCalledTimes(2);
+
+    t += 5000; // recent list: no extra request
+    document.dispatchEvent(new Event('visibilitychange'));
+    await flush();
+    expect(adapter.buddyAgentsV2).toHaveBeenCalledTimes(2);
+
+    visibility = 'hidden';
+    t += 60000;
+    document.dispatchEvent(new Event('visibilitychange'));
+    visibility = 'visible';
+    document.dispatchEvent(new Event('visibilitychange'));
+    await flush();
+    expect(adapter.buddyAgentsV2).toHaveBeenCalledTimes(4);
+
+    svc.stop();
+    t += 60000;
+    document.dispatchEvent(new Event('visibilitychange'));
+    await flush();
+    expect(adapter.buddyAgentsV2).toHaveBeenCalledTimes(4);
+    spy.mockRestore();
   });
 
   it('stops its timer', () => {

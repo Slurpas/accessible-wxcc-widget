@@ -76,7 +76,7 @@ export function createTeamList({ onRefresh }) {
       msg = STRINGS.teamStale(formatTime(s.lastSuccess));
       kind = 'warning';
     } else if (s.lastSuccess) {
-      msg = STRINGS.teamUpdated(formatTime(s.lastSuccess));
+      msg = STRINGS.teamUpdated(formatTime(s.lastSuccess), s.refreshSeconds);
       kind = 'info';
     }
     status.hidden = !msg;

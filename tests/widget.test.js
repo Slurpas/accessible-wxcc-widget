@@ -49,7 +49,24 @@ describe('<accessible-wxcc-widget>', () => {
     expect(q('.status-label').textContent).toBe('NOT READY');
     const labels = qa('.state-btn .btn-label').map((b) => b.textContent);
     expect(labels).toEqual(['READY', 'NOT READY', 'LUNCH', 'BREAK', 'ADMIN']); // RONA (system) excluded
-    expect(qa('h2').map((h) => h.textContent)).toEqual(['My status', 'Change status', 'My current call', 'My team']);
+    // Reading order: status, call, buttons, team (call info is never pushed below a long button list).
+    expect(qa('h2').map((h) => h.textContent)).toEqual(['My status', 'My current call', 'Change status', 'My team']);
+    expect(q('.state-buttons').dataset.density).toBe('few');
+    expect(q('.state-btn').classList.contains('state-btn-ready')).toBe(true);
+  });
+
+  it('switches to a dense button grid for tenants with many idle codes', async () => {
+    currentAdapter = createMockAdapter({ latencyMs: 5, manyCodes: true });
+    await mount({}, { agentId: currentAdapter.agentId });
+    expect(qa('.state-btn').length).toBe(18); // READY + 17 non-system codes
+    expect(q('.state-buttons').dataset.density).toBe('many');
+    expect(qa('.state-btn .btn-label').map((b) => b.textContent)).toContain('SYSTEM DOWNTIME - WAITING FOR IT SUPPORT');
+  });
+
+  it('tells the agent the team list updates by itself', async () => {
+    await mount({}, { agentId: currentAdapter.agentId });
+    expect(q('.team-status').textContent).toMatch(/^Updates automatically every 30 seconds\. Last updated /);
+    expect(q('.team-refresh').textContent).toBe('Refresh now');
   });
 
   it('marks the current state with aria-pressed and visible text', async () => {

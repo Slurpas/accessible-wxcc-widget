@@ -14,6 +14,9 @@ import { AVAILABLE_AUX_CODE } from '../services/agent-state.js';
 // Plain text glyphs (no colour emoji) so they follow the button's text colour.
 const TONE_ICON = { ready: '✔', notready: '✖', lunch: '◐', break: '❚❚', admin: '▤' };
 
+// Above this many idle codes the buttons switch to a denser grid (each still at least 60px tall).
+export const MANY_CODES = 6;
+
 /** Build the list of button definitions from the tenant's idle codes. */
 export function buildButtonDefs(idleCodes) {
   const defs = [{ key: 'ready', label: STRINGS.readyButton, state: 'Available', auxCodeId: AVAILABLE_AUX_CODE, tone: 'ready', reason: 'Available' }];
@@ -47,11 +50,12 @@ export function createStatusButtons({ onSelect }) {
     defs = nextDefs;
     buttons = new Map();
     group.replaceChildren();
+    group.dataset.density = defs.length - 1 > MANY_CODES ? 'many' : 'few';
     for (const d of defs) {
       const current = h('span', { class: 'btn-current', text: '' });
       const btn = h(
         'button',
-        { type: 'button', class: `state-btn tone-${d.tone}`, 'data-key': d.key, 'aria-pressed': 'false' },
+        { type: 'button', class: `state-btn tone-${d.tone}${d.key === 'ready' ? ' state-btn-ready' : ''}`, 'data-key': d.key, 'aria-pressed': 'false' },
         h('span', { class: 'btn-icon', 'aria-hidden': 'true', text: TONE_ICON[d.tone] || '✖' }),
         h('span', { class: 'btn-label', text: d.label }),
         current,

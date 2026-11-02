@@ -18,7 +18,7 @@
               "script": "https://slurpas.github.io/accessible-wxcc-widget/accessible-wxcc-widget/accessible-wxcc-widget.js",
               "attributes": {
                 "team-dashboard": "true",
-                "team-refresh-seconds": "60"
+                "team-refresh-seconds": "30"
               },
               "properties": {
                 "agentId": "$STORE.agent.agentId",

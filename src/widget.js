@@ -4,7 +4,7 @@
  * Inputs from the Desktop layout (see desktop-layout/example-layout.json):
  *   properties: agentId, teamId, channelsStatesMap, taskMap   ($STORE bindings)
  *   attributes: team-dashboard="false"     turn the team list off
- *               team-refresh-seconds="60"  team refresh interval (min 30)
+ *               team-refresh-seconds="30"  team refresh interval (min 15)
  *               theme="dark|light"         default theme (user choice wins)
  *               text-size="100|125|150"    default text size (user choice wins)
  *
@@ -16,7 +16,7 @@ import { connectDesktop, isInsideDesktop } from './services/desktop-sdk.js';
 import { AgentStateService } from './services/agent-state.js';
 import { loadIdleCodes } from './services/auxiliary-codes.js';
 import { ContactService } from './services/contact-events.js';
-import { TeamService } from './services/team-dashboard.js';
+import { TeamService, DEFAULT_REFRESH_SECONDS } from './services/team-dashboard.js';
 import { AudioNotifier } from './services/audio-notify.js';
 import { createCurrentStatus } from './components/current-status.js';
 import { createStatusButtons, buildButtonDefs } from './components/status-buttons.js';
@@ -167,8 +167,10 @@ export class AccessibleWxccWidget extends HTMLElement {
           h('div', { class: 'awx-settings', role: 'group', 'aria-label': STRINGS.settings }, ui.themeBtn, ui.sizeBtn, ui.soundBtn),
         ),
         ui.banner,
-        h('div', { class: 'awx-top' }, ui.status.el, ui.buttons.el),
-        h('div', { class: 'awx-lower' }, ui.call.el, ui.team.el),
+        // DOM (reading and focus) order: status, call, buttons, team. On wide
+        // screens CSS places the buttons in their own scrolling column so a long
+        // list of idle codes never pushes the status, call or team out of view.
+        h('div', { class: 'awx-main' }, ui.status.el, ui.call.el, ui.buttons.el, ui.team.el),
       ),
       ui.polite,
       ui.assertive,
@@ -247,7 +249,7 @@ export class AccessibleWxccWidget extends HTMLElement {
     if (isInsideDesktop()) return connectDesktop();
     if (MOCK_ALLOWED && this._mockRequested()) {
       const { createMockAdapter } = await import('./mock/mock-desktop.js');
-      const adapter = createMockAdapter();
+      const adapter = createMockAdapter({ manyCodes: this.getAttribute('mock-codes') === 'many' });
       this.mockControls = adapter.controls; // used by the dev harness
       return adapter;
     }
@@ -352,7 +354,7 @@ export class AccessibleWxccWidget extends HTMLElement {
   }
 
   _startTeam(adapter) {
-    const team = new TeamService({ adapter, refreshSeconds: Number(this.getAttribute('team-refresh-seconds')) || 60 });
+    const team = new TeamService({ adapter, refreshSeconds: Number(this.getAttribute('team-refresh-seconds')) || DEFAULT_REFRESH_SECONDS });
     this._services.team = team;
     let latestTeam = '';
     try {

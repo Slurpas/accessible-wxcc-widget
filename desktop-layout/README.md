@@ -38,7 +38,7 @@ Rollback: assign the team back to the original layout.
 | Attribute | Values | Default |
 |---|---|---|
 | `team-dashboard` | `"true"` / `"false"` | `"true"` |
-| `team-refresh-seconds` | number ≥ 30 | `60` |
+| `team-refresh-seconds` | number ≥ 15 | `30` |
 | `theme` | `"dark"` / `"light"` | `"dark"` (agent can change in the widget) |
 | `text-size` | `"100"` / `"125"` / `"150"` | `"100"` (agent can change in the widget) |
 

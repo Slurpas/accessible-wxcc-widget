@@ -100,7 +100,7 @@ own runtime validation code.
 - **Status = Webex's truth.** A clicked state is shown as "Requesting READY…" and becomes the big status only when Webex reports it (event, STORE update, or the `stateChangeV2` response that carries `agentChannelStateDetail`). If nothing confirms within 8 seconds, the widget says so.
 - **BUSY and WRAP-UP come from Webex's channel state** (`Engaged`, `WrapUp`), not guessed from call events.
 - **Status buttons are built from the tenant's aux codes.** System codes (e.g. RONA) are excluded. Colours are chosen from the code name (lunch → orange, break/fika → yellow, admin/meeting → blue, others → red); text is always shown.
-- **Team dashboard uses `buddyAgentsV2`**, the least-privileged option. It is optional (`team-dashboard="false"`), polls at most every 60 s (minimum 30 s) only while visible, and keeps the last good list marked "CONNECTION ERROR" on failure. It never shows anyone as OFFLINE because a request failed.
+- **Team dashboard uses `buddyAgentsV2`**, the least-privileged option. It is optional (`team-dashboard="false"`), refreshes automatically every 30 s by default (minimum 15 s), only while visible, and at once when the agent returns to the Desktop tab, and keeps the last good list marked "CONNECTION ERROR" on failure. It never shows anyone as OFFLINE because a request failed.
 - **Features are isolated.** Status, call and team each start separately; a failure in one is shown in that panel only.
 - **Mock mode is a separate module** that the production build removes completely (checked by `verify-bundle.mjs`).
 
