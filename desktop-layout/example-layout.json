@@ -15,7 +15,7 @@
           "widgets": {
             "accessible-widget": {
               "comp": "accessible-wxcc-widget",
-              "script": "https://REPLACE-WITH-YOUR-HOST/accessible-wxcc-widget/accessible-wxcc-widget.js",
+              "script": "https://slurpas.github.io/accessible-wxcc-widget/accessible-wxcc-widget/accessible-wxcc-widget.js",
               "attributes": {
                 "team-dashboard": "true",
                 "team-refresh-seconds": "60"

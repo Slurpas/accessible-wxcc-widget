@@ -15,7 +15,8 @@ Schema reference: Cisco "Create custom desktop layout"
 2. Make a copy, and in the copy's agent section add the navigation entry from
    `example-layout.json` to the existing `"navigation": [ ... ]` array of the
    `area` object. Leave everything else unchanged.
-3. Replace `https://REPLACE-WITH-YOUR-HOST/...` with the real bundle URL (see DEPLOYMENT.md).
+3. The `script` URL already points to the GitHub Pages build. If you host the bundle
+   elsewhere, change it to that URL (see DEPLOYMENT.md).
 4. If another page is already `"isDefaultLandingPage": true`, decide which one
    should open first. For the visually impaired agent, making this page the
    landing page is recommended.
