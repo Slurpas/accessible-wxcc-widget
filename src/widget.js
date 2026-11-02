@@ -282,6 +282,8 @@ export class AccessibleWxccWidget extends HTMLElement {
     if (session !== this._session) return;
     this._ui.buttons.setDefs(buildButtonDefs(codes));
     if (this._services.agent) this._services.agent.setAuxCodes(codes);
+    this._idleCodes = codes;
+    if (this._services.team) this._services.team.setIdleCodes(codes);
     this._auxError = error ? STRINGS.auxCodesUnavailable : '';
     this._refreshButtonsEnabled();
   }
@@ -363,6 +365,7 @@ export class AccessibleWxccWidget extends HTMLElement {
       /* optional */
     }
     team.setContext({ teamId: this._props.teamId || latestTeam || adapter.teamId, selfId: this._props.agentId || adapter.agentId });
+    if (this._idleCodes) team.setIdleCodes(this._idleCodes);
     team.changes.subscribe((s) => this._ui.team.update(s, team.isStale()));
     this._disposer.interval(() => this._ui.team.update(team.state, team.isStale()), 30000);
     team.start();

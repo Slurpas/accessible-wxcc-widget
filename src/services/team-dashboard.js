@@ -30,8 +30,31 @@ function nameOf(a) {
   return String(a.agentName || a.name || full || a.dn || 'Unknown agent').trim();
 }
 
+// Not Ready reason. Cisco documents only agentId, agentName, dn, siteId, state
+// and teamId for buddy agents; these fields are read only if a tenant's
+// response carries them (the team probe shows which keys are present).
+const REASON_NAME_FIELDS = ['idleCodeName', 'auxCodeName', 'auxiliaryCodeName', 'reasonName', 'subStatusName'];
+const REASON_ID_FIELDS = ['auxCodeId', 'auxiliaryCodeId', 'idleCodeId', 'subStatus', 'reasonCodeId'];
+export const REASON_FIELDS = [...REASON_NAME_FIELDS, ...REASON_ID_FIELDS, 'idleCode'];
+
+/** The colleague's Not Ready reason name, or '' when Webex did not send one we can name. */
+export function reasonOf(a, codeNames = new Map()) {
+  for (const f of REASON_NAME_FIELDS) {
+    if (typeof a[f] === 'string' && a[f].trim()) return a[f].trim();
+  }
+  const ids = REASON_ID_FIELDS.map((f) => a[f]);
+  if (a.idleCode && typeof a.idleCode === 'object') {
+    if (typeof a.idleCode.name === 'string' && a.idleCode.name.trim()) return a.idleCode.name.trim();
+    ids.push(a.idleCode.id);
+  }
+  for (const id of ids) {
+    if (id !== undefined && id !== null && codeNames.has(String(id))) return codeNames.get(String(id));
+  }
+  return '';
+}
+
 /** Normalise buddy agents into rows, filtered to the team when possible. */
-export function mapBuddyAgents(lists, { teamId, selfId }) {
+export function mapBuddyAgents(lists, { teamId, selfId, codeNames }) {
   const byId = new Map();
   let entriesWithTeam = 0;
   let total = 0;
@@ -40,12 +63,14 @@ export function mapBuddyAgents(lists, { teamId, selfId }) {
       if (!a || !a.agentId) continue;
       total += 1;
       if (a.teamId !== undefined && a.teamId !== null && a.teamId !== '') entriesWithTeam += 1;
+      const display = mapBuddyState(a.state, state);
       byId.set(String(a.agentId), {
         id: String(a.agentId),
         name: nameOf(a),
         teamId: a.teamId === undefined || a.teamId === null ? '' : String(a.teamId),
         teamName: a.teamName ? String(a.teamName) : '',
-        display: mapBuddyState(a.state, state),
+        display,
+        reason: display === DISPLAY.NOT_READY ? reasonOf(a, codeNames) : '',
       });
     }
   }
@@ -71,6 +96,8 @@ export class TeamService {
     this._timer = null;
     this._inFlight = null;
     this._lastManual = 0;
+    this._lastLists = null;
+    this.codeNames = new Map(); // idle code id -> name, from the agent's own profile
     this.state = {
       phase: 'loading', // loading | ok | error | unavailable
       rows: [],
@@ -105,6 +132,14 @@ export class TeamService {
     clearInterval(this._timer);
     this._timer = null;
     this.changes.clear();
+  }
+
+  /** Idle codes the widget already loaded; used to name colleagues' Not Ready reasons. */
+  setIdleCodes(codes) {
+    this.codeNames = new Map((codes || []).map((c) => [String(c.id), String(c.name)]));
+    if (this._lastLists && this.state.phase === 'ok') {
+      this._set(mapBuddyAgents(this._lastLists, { teamId: this.teamId, selfId: this.selfId, codeNames: this.codeNames }));
+    }
   }
 
   /** Manual refresh from the button, rate-limited. */
@@ -154,7 +189,8 @@ export class TeamService {
         }
         lists.push({ state, agents: data.agentList });
       }
-      const mapped = mapBuddyAgents(lists, { teamId: this.teamId, selfId: this.selfId });
+      this._lastLists = lists;
+      const mapped = mapBuddyAgents(lists, { teamId: this.teamId, selfId: this.selfId, codeNames: this.codeNames });
       const returned = lists.reduce((n, l) => n + l.agents.length, 0);
       if (returned > 0 && !mapped.teamFilterApplied && !this._warnedUnfiltered) {
         this._warnedUnfiltered = true; // for admins (Desktop logs), not shown to the agent

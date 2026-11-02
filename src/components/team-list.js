@@ -31,7 +31,12 @@ export function createTeamList({ onRefresh }) {
           { class: 'team-row', 'data-status': r.display },
           h('span', { class: 'team-indicator', 'aria-hidden': 'true', text: ICONS[r.display] || '?' }),
           h('span', { class: 'team-name', text: r.name }),
-          h('span', { class: 'team-state', text: STRINGS.status[r.display] || r.display }),
+          h(
+            'span',
+            { class: 'team-state' },
+            h('span', { text: STRINGS.status[r.display] || r.display }),
+            r.reason ? h('span', { class: 'team-reason', text: r.reason }) : null,
+          ),
         ),
       ),
     );

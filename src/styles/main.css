@@ -446,8 +446,16 @@
   overflow-wrap: anywhere;
 }
 .team-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
   font-weight: 900;
   text-align: right;
+}
+.team-reason {
+  font-weight: 800;
+  font-size: 0.9em;
+  overflow-wrap: anywhere;
 }
 .team-empty {
   font-weight: 700;
@@ -471,6 +479,7 @@
   }
   .team-state {
     grid-column: 1 / -1;
+    align-items: flex-start;
     text-align: left;
   }
 }

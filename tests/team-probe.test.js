@@ -8,7 +8,7 @@ const SECRET_BITS = ['Anna Svensson', 'anna@example.com', '+46461234567', '9f0c1
 function agents() {
   return [
     { agentId: '9f0c1a2b-3c4d-4e5f-8a9b-0c1d2e3f4a5b', agentName: 'Anna Svensson', teamId: 'team-1', state: 'Available', dn: '+46461234567' },
-    { agentId: 'a1', agentName: 'Erik', teamId: 'team-2', state: 'Available' },
+    { agentId: 'a1', agentName: 'Erik', teamId: 'team-2', state: 'Available', auxCodeId: 'c-1' },
   ];
 }
 
@@ -56,6 +56,7 @@ describe('team probe', () => {
     expect(r.sdk).toBe('ok');
     expect(r.buddyAgentsV2.states.Available).toMatchObject({ count: 2, withTeamId: 2, inOwnTeam: 1 });
     expect(r.buddyAgentsV2.states.Idle.count).toBe(0);
+    expect(r.buddyAgentsV2.states.Available.reasonFieldsFound).toEqual(['auxCodeId']);
     const rt = r.realTimeData;
     expect(rt.rtdwcPresent).toBe(true);
     expect(rt.connectionState).toBe('string "CONNECTED"');

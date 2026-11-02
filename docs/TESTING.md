@@ -9,7 +9,7 @@ npm run check     # tests + production build + bundle verification
 
 ### Results: 2 Nov 2026, Node 24.13, Vitest 5.1, jsdom 30.1
 
-**11 test files, 135 tests, all passed.**
+**11 test files, 138 tests, all passed.**
 
 | File | Tests | Covers |
 |---|---|---|

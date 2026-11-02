@@ -43,7 +43,7 @@ const MANY_IDLE_CODES = [
 
 const TEAM = [
   { agentId: 'm-2', agentName: 'Demo Anna (mock)', teamId: TEAM_ID, state: 'Available' },
-  { agentId: 'm-3', agentName: 'Demo Erik (mock)', teamId: TEAM_ID, state: 'Idle' },
+  { agentId: 'm-3', agentName: 'Demo Erik (mock)', teamId: TEAM_ID, state: 'Idle', auxCodeId: '00000000-0000-4000-8000-0000000000c2' },
   { agentId: 'm-4', agentName: 'Demo Maria (mock)', teamId: TEAM_ID, state: 'Available' },
   { agentId: 'm-5', agentName: 'Demo Johan (mock)', teamId: TEAM_ID, state: 'Idle' },
   { agentId: 'm-9', agentName: 'Other Team Agent (mock)', teamId: 'mock-team-2', state: 'Available' },

@@ -61,6 +61,14 @@ supports BUSY, WRAP-UP and OFFLINE rows.
 | Desktop real-time data (`Desktop.rtdwc` / `window.wxcc.rtdwc`) | Unknown: in the official SDK but undocumented (dataset names and entitlements). | Yes, if allowed |
 | Server-side service with a Webex service app (agent state webhooks + snapshot) | Yes | Secret stays server-side; needs hosting and a security review. |
 
+**Colleagues' Not Ready reason.** Cisco documents only `agentId`, `agentName`, `dn`,
+`siteId`, `state` and `teamId` for buddy agents, so no reason is promised. If a
+tenant's response carries a reason field (`idleCodeName`, `auxCodeId`, `idleCode`, …),
+the team list shows it, resolving IDs with the idle codes the agent's own profile
+already loads; otherwise it shows NOT READY. The probe's `reasonFieldsFound` says
+which, if any, your tenant sends. Codes outside the agent's own profile cannot be
+named without extra access.
+
 **Team probe.** To find out whether the real-time channel works for a given user,
 sign in to Desktop as that user, open DevTools (F12) → Console and run:
 

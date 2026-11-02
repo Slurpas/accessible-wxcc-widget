@@ -19,6 +19,7 @@
  * subscription is closed again before the probe returns.
  */
 import { connectDesktop } from '../services/desktop-sdk.js';
+import { REASON_FIELDS } from '../services/team-dashboard.js';
 
 export const PROBE_VERSION = 1;
 
@@ -182,6 +183,8 @@ async function probeBuddies(adapter) {
         withTeamId: list.filter((a) => a && a.teamId).length,
         inOwnTeam: teamId ? list.filter((a) => a && String(a.teamId) === teamId).length : null,
         entryShape: list.length ? describeShape(list[0], 1) : null,
+        // Which Not Ready reason fields (if any) this tenant sends; names only.
+        reasonFieldsFound: REASON_FIELDS.filter((f) => list.some((a) => a && a[f] !== undefined && a[f] !== null && a[f] !== '')),
       };
     } catch (err) {
       out.states[state] = { error: errorText(err) };

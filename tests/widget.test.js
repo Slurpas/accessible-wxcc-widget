@@ -63,6 +63,15 @@ describe('<accessible-wxcc-widget>', () => {
     expect(qa('.state-btn .btn-label').map((b) => b.textContent)).toContain('SYSTEM DOWNTIME - WAITING FOR IT SUPPORT');
   });
 
+  it("shows a colleague's Not Ready reason when Webex provides it", async () => {
+    await mount({}, { agentId: currentAdapter.agentId });
+    const erik = qa('.team-row').find((r) => r.textContent.includes('Demo Erik'));
+    expect(erik.querySelector('.team-reason').textContent).toBe('Lunch');
+    const johan = qa('.team-row').find((r) => r.textContent.includes('Demo Johan'));
+    expect(johan.querySelector('.team-reason')).toBeNull();
+    expect(johan.querySelector('.team-state').textContent).toBe('NOT READY');
+  });
+
   it('tells the agent the team list updates by itself', async () => {
     await mount({}, { agentId: currentAdapter.agentId });
     expect(q('.team-status').textContent).toMatch(/^Updates automatically every 30 seconds\. Last updated /);

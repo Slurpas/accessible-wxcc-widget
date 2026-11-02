@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { TeamService, mapBuddyAgents } from '../src/services/team-dashboard.js';
+import { TeamService, mapBuddyAgents, reasonOf } from '../src/services/team-dashboard.js';
 import { DISPLAY } from '../src/utils/status-mapper.js';
 import { fakeAdapter, flush } from './helpers.js';
 
@@ -119,6 +119,36 @@ describe('TeamService', () => {
     await flush();
     expect(adapter.buddyAgentsV2).toHaveBeenCalledTimes(4);
     spy.mockRestore();
+  });
+
+  it('names a Not Ready reason only when Webex sends one we can resolve', () => {
+    const names = new Map([['c-lunch', 'Lunch']]);
+    expect(reasonOf({ idleCodeName: 'Meeting' }, names)).toBe('Meeting');
+    expect(reasonOf({ auxCodeId: 'c-lunch' }, names)).toBe('Lunch');
+    expect(reasonOf({ idleCode: { id: 'c-lunch' } }, names)).toBe('Lunch');
+    expect(reasonOf({ auxCodeId: 'unknown' }, names)).toBe('');
+    expect(reasonOf({ state: 'Idle' }, names)).toBe(''); // Cisco's documented fields carry no reason
+    const { rows } = mapBuddyAgents(
+      [
+        { state: 'Available', agents: [{ agentId: 'a', agentName: 'A', state: 'Available', auxCodeId: 'c-lunch' }] },
+        { state: 'Idle', agents: [{ agentId: 'b', agentName: 'B', state: 'Idle', auxCodeId: 'c-lunch' }] },
+      ],
+      { codeNames: names },
+    );
+    expect(rows.map((r) => [r.id, r.reason])).toEqual([['a', ''], ['b', 'Lunch']]);
+  });
+
+  it('adds reasons to the current list when idle codes arrive later', async () => {
+    const adapter = fakeAdapter({ getLatestData: () => ({ agentProfileID: PROFILE }) });
+    adapter.buddyAgentsV2.mockImplementation(async ({ state }) => ({
+      data: { agentList: state === 'Idle' ? [{ agentId: 'b', agentName: 'B', state: 'Idle', auxCodeId: 'c-lunch' }] : [] },
+    }));
+    const svc = new TeamService({ adapter });
+    await svc.refresh();
+    expect(svc.state.rows[0].reason).toBe('');
+    svc.setIdleCodes([{ id: 'c-lunch', name: 'Lunch' }]);
+    expect(svc.state.rows[0].reason).toBe('Lunch');
+    expect(adapter.buddyAgentsV2).toHaveBeenCalledTimes(2); // no extra request
   });
 
   it('stops its timer', () => {
