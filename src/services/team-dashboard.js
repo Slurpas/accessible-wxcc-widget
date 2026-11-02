@@ -155,6 +155,11 @@ export class TeamService {
         lists.push({ state, agents: data.agentList });
       }
       const mapped = mapBuddyAgents(lists, { teamId: this.teamId, selfId: this.selfId });
+      const returned = lists.reduce((n, l) => n + l.agents.length, 0);
+      if (returned > 0 && !mapped.teamFilterApplied && !this._warnedUnfiltered) {
+        this._warnedUnfiltered = true; // for admins (Desktop logs), not shown to the agent
+        log.warn('Team filter not applied: buddy agents returned without teamId or no teamId bound');
+      }
       this._set({ phase: 'ok', ...mapped, lastSuccess: this.now(), error: '' });
     } catch (err) {
       log.warn('buddyAgentsV2 failed', err);

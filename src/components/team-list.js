@@ -11,8 +11,6 @@ export function createTeamList({ onRefresh }) {
   const summary = h('p', { class: 'team-summary' });
   const status = h('p', { class: 'team-status', hidden: true });
   const list = h('ul', { class: 'team-list', 'aria-labelledby': 'awx-h-team' });
-  const note = h('p', { class: 'team-note', text: STRINGS.teamScopeNote });
-  const filterNote = h('p', { class: 'team-note', hidden: true, text: STRINGS.teamUnfilteredNote });
   const refresh = h('button', { type: 'button', class: 'small-btn team-refresh', text: STRINGS.refresh });
   refresh.addEventListener('click', () => onRefresh());
 
@@ -23,8 +21,6 @@ export function createTeamList({ onRefresh }) {
     summary,
     status,
     list,
-    filterNote,
-    note,
   );
 
   function renderRows(rows) {
@@ -54,11 +50,8 @@ export function createTeamList({ onRefresh }) {
       setText(summary, STRINGS.teamUnavailable);
       status.hidden = true;
       renderRows([]);
-      note.hidden = true;
-      filterNote.hidden = true;
       return;
     }
-    note.hidden = false;
 
     if (s.phase === 'loading' && !s.lastSuccess) {
       setText(summary, STRINGS.teamLoading);
@@ -89,7 +82,6 @@ export function createTeamList({ onRefresh }) {
     } else {
       renderRows(s.rows);
     }
-    filterNote.hidden = !(s.lastSuccess && !s.teamFilterApplied);
   }
 
   return { el, update };

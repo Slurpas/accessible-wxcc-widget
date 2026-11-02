@@ -80,15 +80,12 @@ export const STRINGS = {
   teamDisabled: 'The team list is turned off in this layout.',
   teamUnavailable: 'The team list is not available.',
   teamLoading: 'Loading team…',
-  teamEmpty: 'No colleagues are Ready or Not Ready right now.',
+  teamEmpty: 'No colleagues to show right now.',
   teamCounts: (ready, shown) => `${ready} ready · ${shown} logged in and listed`,
   teamStale: (time) => `Information may be out of date. Last updated ${time}.`,
   teamError: (time) =>
     time ? `CONNECTION ERROR. Showing last known list from ${time}.` : 'CONNECTION ERROR. Team list could not be loaded.',
   teamUpdated: (time, seconds) => `Updates automatically every ${seconds} seconds. Last updated ${time}.`,
-  teamScopeNote:
-    'Webex lists only colleagues who are Ready or Not Ready. Colleagues on a call, in wrap-up or logged out are not shown.',
-  teamUnfilteredNote: 'Team filter not available: showing all colleagues Webex offers for consult.',
   refresh: 'Refresh now',
 
   // Settings

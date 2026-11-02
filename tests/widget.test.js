@@ -67,6 +67,7 @@ describe('<accessible-wxcc-widget>', () => {
     await mount({}, { agentId: currentAdapter.agentId });
     expect(q('.team-status').textContent).toMatch(/^Updates automatically every 30 seconds\. Last updated /);
     expect(q('.team-refresh').textContent).toBe('Refresh now');
+    expect(q('.panel-team').textContent).not.toMatch(/Webex lists|Team filter/);
   });
 
   it('marks the current state with aria-pressed and visible text', async () => {
