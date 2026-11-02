@@ -21,7 +21,7 @@
 import { connectDesktop } from '../services/desktop-sdk.js';
 import { REASON_FIELDS } from '../services/team-dashboard.js';
 
-export const PROBE_VERSION = 1;
+export const PROBE_VERSION = 2;
 
 // Likely dataset names. The real names are not documented; add more with
 // { datasets: [...] } after searching Desktop's sources for "datasetName".
@@ -66,7 +66,11 @@ export function scrub(text) {
 function errorText(err) {
   if (!err) return 'unknown error';
   if (typeof err === 'string') return scrub(err);
-  return scrub(err.message || err.type || err.name || 'error');
+  const base = err.message || err.type || err.name || 'error';
+  // Axios-style errors: the server's own reason says what the request lacked.
+  const body = err.response && err.response.data;
+  const detail = body && typeof body === 'object' ? body.message || body.error || body.description || body.reason : typeof body === 'string' ? body : '';
+  return scrub(detail ? `${base}: ${typeof detail === 'string' ? detail : JSON.stringify(describeShape(detail, 1))}` : base);
 }
 
 /**
@@ -166,7 +170,7 @@ async function probeBuddies(adapter) {
   out.profileIdPresent = /^[0-9a-f-]{36}$/i.test(profileId);
   out.ownTeamIdPresent = !!teamId;
   if (!out.profileIdPresent) return out;
-  for (const state of ['Available', 'Idle', 'RONA']) {
+  for (const state of ['Available', 'Idle']) {
     try {
       const res = await withTimeout(
         adapter.buddyAgentsV2({ agentProfileId: profileId, mediaType: 'telephony', channelName: 'telephony', state }),
@@ -193,7 +197,42 @@ async function probeBuddies(adapter) {
   return out;
 }
 
-async function probeRtdwc(win, datasets, waitMs) {
+const NAME_RE = /^[A-Za-z][A-Za-z0-9_.-]{1,80}$/;
+
+/**
+ * Desktop's own catalogue of real-time datasets (rtdwc.DATASET constants and
+ * the dataset factory). These are code identifiers, not user data; only
+ * identifier-like strings are kept.
+ */
+export function datasetCatalog(rt) {
+  const constants = {};
+  const names = new Set();
+  const visit = (obj, prefix, depth) => {
+    if (!obj || typeof obj !== 'object' || depth < 0) return;
+    for (const k of Object.keys(obj).slice(0, 80)) {
+      if (isIdLike(k)) continue;
+      const v = safeGet(obj, k);
+      const path = prefix ? `${prefix}.${k}` : k;
+      if (typeof v === 'string' && NAME_RE.test(v) && !isIdLike(v)) {
+        constants[path] = v;
+        names.add(v);
+      } else if (v && typeof v === 'object' && !Array.isArray(v)) visit(v, path, depth - 1);
+    }
+  };
+  visit(safeGet(rt, 'DATASET'), '', 2);
+  const factory = safeGet(rt, 'dataSetFactory');
+  const out = { constants, factoryApi: factory ? apiNames(factory) : [] };
+  // Registered dataset handlers, if the factory keeps them in a map or object.
+  for (const key of ['dataSets', 'datasets', 'registry', 'handlers', 'map']) {
+    const reg = factory && safeGet(factory, key);
+    const keys = reg instanceof Map ? [...reg.keys()] : reg && typeof reg === 'object' ? Object.keys(reg) : [];
+    for (const n of keys) if (NAME_RE.test(String(n)) && !isIdLike(String(n))) names.add(String(n));
+  }
+  out.names = [...names].slice(0, 60);
+  return out;
+}
+
+async function probeRtdwc(win, extra, waitMs) {
   const out = { wxccPresent: false, rtdwcPresent: false };
   const wxcc = safeGet(win, 'wxcc');
   out.wxccPresent = !!wxcc;
@@ -211,6 +250,9 @@ async function probeRtdwc(win, datasets, waitMs) {
   }
   if (typeof rt.subscribe !== 'function') return out;
 
+  out.catalog = datasetCatalog(rt);
+  // Prefer Desktop's own dataset names; fall back to guesses only if none are found.
+  const datasets = [...new Set([...extra, ...(out.catalog.names.length ? out.catalog.names : CANDIDATE_DATASETS)])].filter((n) => NAME_RE.test(n));
   const results = datasets.map((name) => ({ dataset: name, accepted: false, updates: 0, errors: 0, firstUpdate: null, firstError: null, closed: false }));
   const subs = await Promise.all(
     results.map(async (r) => {
@@ -252,7 +294,6 @@ async function probeRtdwc(win, datasets, waitMs) {
  * listen, default 10 s). Resolves to the report and prints it as JSON.
  */
 export async function runTeamProbe({ datasets = [], waitMs = 10000, win = globalThis, connect = connectDesktop, print = true } = {}) {
-  const names = [...new Set([...CANDIDATE_DATASETS, ...datasets.map(String)])].filter((n) => /^[A-Za-z][A-Za-z0-9_.-]{1,80}$/.test(n));
   const report = { probe: 'accessible-wxcc-widget team probe', version: PROBE_VERSION, at: new Date().toISOString() };
   let adapter = null;
   try {
@@ -262,7 +303,7 @@ export async function runTeamProbe({ datasets = [], waitMs = 10000, win = global
     report.sdk = errorText(err);
   }
   if (adapter) report.buddyAgentsV2 = await probeBuddies(adapter);
-  report.realTimeData = await probeRtdwc(win, names, waitMs);
+  report.realTimeData = await probeRtdwc(win, datasets.map(String), waitMs);
   if (adapter) adapter.cleanup();
   if (print) console.info(`[accessible-wxcc-widget] Team probe report (contains no names, IDs or tokens; safe to share):\n${JSON.stringify(report, null, 2)}`);
   return report;

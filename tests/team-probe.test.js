@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { runTeamProbe, describeShape, scrub, isIdLike } from '../src/diagnostics/team-probe.js';
+import { runTeamProbe, describeShape, scrub, isIdLike, datasetCatalog } from '../src/diagnostics/team-probe.js';
 import { fakeAdapter } from './helpers.js';
 
 const PROFILE = '11111111-2222-4333-8444-555555555555';
@@ -97,6 +97,33 @@ describe('team probe', () => {
     const r = await runTeamProbe({ win: {}, connect: async () => Promise.reject(new Error('NOT_IN_DESKTOP')), waitMs: 1, print: false });
     expect(r.sdk).toBe('NOT_IN_DESKTOP');
     expect(r.realTimeData).toEqual({ wxccPresent: false, rtdwcPresent: false });
+  });
+
+  it("tries Desktop's own dataset names when it can find them", async () => {
+    const { rt, win, connect } = setup();
+    rt.rtdwc.DATASET = { AGENT: 'agentState', NESTED: { TEAM: 'teamAgentStates' }, ORG: '9f0c1a2b-3c4d-4e5f-8a9b-0c1d2e3f4a5b' };
+    rt.rtdwc.dataSetFactory = { dataSets: new Map([['liveAgents', {}]]), create() {} };
+    const r = await runTeamProbe({ win, connect, waitMs: 20, print: false });
+    expect(r.realTimeData.catalog.constants).toEqual({ AGENT: 'agentState', 'NESTED.TEAM': 'teamAgentStates' });
+    expect(r.realTimeData.catalog.names).toEqual(['agentState', 'teamAgentStates', 'liveAgents']);
+    expect(r.realTimeData.results.map((x) => x.dataset)).toEqual(['agentState', 'teamAgentStates', 'liveAgents']);
+    expect(JSON.stringify(r)).not.toContain('9f0c1a2b');
+  });
+
+  it("includes the server's reason for a rejected subscription, scrubbed", async () => {
+    const { rt, win, connect } = setup();
+    rt.rtdwc.subscribe = vi.fn(async ({ error }) => {
+      const err = new Error('Request failed with status code 400');
+      err.response = { data: { message: 'filter.agentId missing for 9f0c1a2b-3c4d-4e5f-8a9b-0c1d2e3f4a5b' } };
+      error(err);
+      return () => {};
+    });
+    const r = await runTeamProbe({ win, connect, waitMs: 20, print: false, datasets: ['x1'] });
+    expect(r.realTimeData.results[0].firstError).toBe('Request failed with status code 400: filter.agentId missing for <id>');
+  });
+
+  it('reads no catalogue from objects without one', () => {
+    expect(datasetCatalog({})).toEqual({ constants: {}, factoryApi: [], names: [] });
   });
 
   it('scrubs and classifies safely', () => {
