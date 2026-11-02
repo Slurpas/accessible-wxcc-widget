@@ -1,0 +1,150 @@
+/**
+ * Thin adapter around the official Cisco Webex Contact Center Desktop SDK
+ * (@wxcc-desktop/sdk). Every Cisco call the widget makes goes through this
+ * file, so the rest of the code never touches the SDK directly and can be
+ * tested with a fake adapter.
+ *
+ * Why the SDK is loaded lazily:
+ * the SDK reads the global AGENTX_SERVICE object (provided by Desktop) as
+ * soon as it is evaluated. Outside Desktop that global does not exist and
+ * importing the SDK throws a ReferenceError. We therefore check for the
+ * global first and only then import the SDK, so the widget can show a clear
+ * diagnostic message instead of crashing.
+ */
+import { log, setLogSink } from '../utils/logger.js';
+
+const WIDGET_NAME = 'accessible-wxcc-widget';
+const WIDGET_PROVIDER = 'accessible-wxcc-widget';
+
+/** True when the page is Webex Contact Center Desktop (or a Desktop-hosted frame). */
+export function isInsideDesktop(win = globalThis) {
+  try {
+    return typeof win.AGENTX_SERVICE === 'object' && win.AGENTX_SERVICE !== null;
+  } catch {
+    return false;
+  }
+}
+
+// The SDK module is a singleton inside this bundle. If the layout places the
+// widget more than once (for example a persistent tab and a custom page),
+// all instances share one initialised SDK and it is released only when the
+// last instance unmounts.
+let sdkPromise = null;
+let sdkUsers = 0;
+
+async function loadAndInitSdk() {
+  let Desktop;
+  try {
+    ({ Desktop } = await import('@wxcc-desktop/sdk'));
+    await Desktop.config.init({ widgetName: WIDGET_NAME, widgetProvider: WIDGET_PROVIDER });
+  } catch (err) {
+    const e = new Error(`Desktop SDK could not start: ${err && err.message ? err.message : err}`);
+    e.code = 'SDK_INIT_FAILED';
+    throw e;
+  }
+  try {
+    const sdkLogger = Desktop.logger.createLogger(WIDGET_NAME);
+    if (sdkLogger) setLogSink(sdkLogger);
+  } catch {
+    /* fall back to console logging */
+  }
+  return Desktop;
+}
+
+function releaseSdk(Desktop) {
+  sdkUsers = Math.max(0, sdkUsers - 1);
+  if (sdkUsers > 0) return;
+  sdkPromise = null;
+  try {
+    Desktop.config.cleanup();
+  } catch (err) {
+    log.warn('SDK cleanup failed', err);
+  }
+}
+
+/**
+ * Load and initialise the SDK. Resolves to an adapter object; rejects with
+ * an Error whose `code` is NOT_IN_DESKTOP or SDK_INIT_FAILED.
+ */
+export async function connectDesktop(win = globalThis) {
+  if (!isInsideDesktop(win)) {
+    const e = new Error('Webex Contact Center Desktop was not detected');
+    e.code = 'NOT_IN_DESKTOP';
+    throw e;
+  }
+  if (!sdkPromise) {
+    sdkPromise = loadAndInitSdk();
+    sdkPromise.catch(() => {
+      sdkPromise = null;
+    });
+  }
+  const Desktop = await sdkPromise;
+  sdkUsers += 1;
+  return createDesktopAdapter(Desktop, () => releaseSdk(Desktop));
+}
+
+/**
+ * Wrap the Desktop SDK object in the adapter interface used by services.
+ * Exported for tests; production code uses connectDesktop().
+ */
+export function createDesktopAdapter(Desktop, release = () => {}) {
+  const subscriptions = new Set();
+
+  function subscribe(module, eventName, handler) {
+    module.addEventListener(eventName, handler);
+    const off = () => {
+      try {
+        module.removeEventListener(eventName, handler);
+      } catch {
+        /* SDK may already be cleaned up */
+      }
+      subscriptions.delete(off);
+    };
+    subscriptions.add(off);
+    return off;
+  }
+
+  return {
+    mode: 'desktop',
+
+    /** Data the SDK fetched from the agent profile (agentProfileID, teamId, idleCodes, ...). */
+    getLatestData() {
+      return Desktop.agentStateInfo.latestData || {};
+    },
+
+    /** Documented: Desktop.agentStateInfo.stateChangeV2({channelType, state, auxCodeId, reason, agentId}). */
+    stateChangeV2(payload) {
+      return Desktop.agentStateInfo.stateChangeV2(payload);
+    },
+
+    /** Documented: Desktop.agentConfigJsApi.fetchPaginatedAuxCodes({workType, page, pageSize}). */
+    fetchPaginatedAuxCodes(payload) {
+      return Desktop.agentConfigJsApi.fetchPaginatedAuxCodes(payload);
+    },
+
+    /** Documented: Desktop.agentContact.buddyAgentsV2({data}). Uses the agent's own Desktop session. */
+    buddyAgentsV2(data) {
+      return Desktop.agentContact.buddyAgentsV2({ data });
+    },
+
+    /** Documented: Desktop.actions.getTaskMap(). Used to restore a call that was active before mount. */
+    getTaskMap() {
+      return Desktop.actions.getTaskMap();
+    },
+
+    onAgentStateEvent(eventName, handler) {
+      return subscribe(Desktop.agentStateInfo, eventName, handler);
+    },
+
+    onContactEvent(eventName, handler) {
+      return subscribe(Desktop.agentContact, eventName, handler);
+    },
+
+    /** Remove only our own listeners, then release the shared SDK instance. */
+    cleanup() {
+      for (const off of [...subscriptions]) off();
+      release();
+      release = () => {};
+    },
+  };
+}

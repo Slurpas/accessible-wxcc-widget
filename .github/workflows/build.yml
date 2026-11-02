@@ -1,0 +1,77 @@
+name: Build and test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies (exact lockfile)
+        run: npm ci
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+
+      - name: Verify bundle (no mock code, no secrets, size limit)
+        run: node scripts/verify-bundle.mjs
+
+      - name: Upload bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: accessible-wxcc-widget-${{ github.sha }}
+          path: dist/
+          retention-days: 30
+
+      # Prepare the GitHub Pages site layout: /accessible-wxcc-widget/accessible-wxcc-widget.js
+      - name: Assemble Pages site
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.DEPLOY_TARGET == 'github-pages'
+        run: |
+          mkdir -p site/accessible-wxcc-widget
+          cp dist/accessible-wxcc-widget.js dist/build-info.json site/accessible-wxcc-widget/
+          touch site/.nojekyll
+
+      - name: Upload Pages artifact
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.DEPLOY_TARGET == 'github-pages'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/
+
+  # Deployment is OFF until an administrator sets the repository variable
+  # DEPLOY_TARGET=github-pages (Settings > Secrets and variables > Actions > Variables)
+  # and enables Pages with source "GitHub Actions". Use the "github-pages"
+  # environment's protection rules to require a manual approval per release.
+  deploy-pages:
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.DEPLOY_TARGET == 'github-pages'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

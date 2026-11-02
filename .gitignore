@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Build output (built and published by CI; never commit)
+dist/
+*.tsbuildinfo
+.vite/
+coverage/
+
+# Environment and secrets: never commit
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Local test data (may contain real numbers or names)
+test-data/
+local-test-data/
+*.har
+*.log
+
+# Editors / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Temporary
+tmp/
+.probe/

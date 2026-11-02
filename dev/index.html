@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Widget dev harness (MOCK)</title>
+    <style>
+      body { margin: 0; font-family: Arial, sans-serif; background: #444; color: #fff; }
+      header { padding: 12px 16px; background: #222; }
+      header h1 { font-size: 18px; margin: 0 0 8px; }
+      .controls { display: flex; flex-wrap: wrap; gap: 6px; }
+      .controls button, .controls select { font-size: 14px; padding: 6px 10px; }
+      .stage { padding: 16px; }
+      .frame { background: #000; border: 2px dashed #aaa; height: 900px; overflow: hidden; resize: horizontal; margin: 0 auto; }
+      .warn { background: #ffd60a; color: #000; padding: 6px 10px; font-weight: bold; display: inline-block; margin-bottom: 8px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Accessible WXCC widget: development harness</h1>
+      <div class="warn">MOCK MODE: fake data only. This page never connects to Webex.</div>
+      <div class="controls" id="controls">
+        <label>Container
+          <select id="width">
+            <option value="320px">Narrow sidebar (320px)</option>
+            <option value="600px" selected>Medium panel (600px)</option>
+            <option value="1200px">Wide custom page (1200px)</option>
+          </select>
+        </label>
+        <button data-c="incomingCall">Incoming call</button>
+        <button data-c="answer">Answer</button>
+        <button data-c="hold">Hold</button>
+        <button data-c="unhold">Unhold</button>
+        <button data-c="updateAni">ANI update</button>
+        <button data-c="endCall">End call (wrap-up)</button>
+        <button data-c="wrapUp">Finish wrap-up</button>
+        <button data-c="outboundCall">Outbound call</button>
+        <button data-c="external-ready">External: Ready</button>
+        <button data-c="external-lunch">External: Lunch</button>
+        <button data-c="external-rona">External: RONA</button>
+        <button data-c="failNextStateChange">Fail next status change</button>
+        <button data-c="offline">Simulate offline</button>
+        <button data-c="online">Back online</button>
+        <button data-c="remount">Unmount + remount</button>
+      </div>
+    </header>
+    <div class="stage">
+      <div class="frame" id="frame" style="width: 600px">
+        <accessible-wxcc-widget id="w" mock="true"></accessible-wxcc-widget>
+      </div>
+    </div>
+    <script type="module">
+      import '../src/index.js';
+      const frame = document.getElementById('frame');
+      document.getElementById('width').addEventListener('change', (e) => (frame.style.width = e.target.value));
+      document.getElementById('controls').addEventListener('click', (e) => {
+        const c = e.target.dataset && e.target.dataset.c;
+        if (!c) return;
+        const w = document.getElementById('w');
+        const m = w.mockControls;
+        if (c === 'remount') { frame.removeChild(w); setTimeout(() => frame.appendChild(w), 300); return; }
+        if (c === 'offline') { window.dispatchEvent(new Event('offline')); m.setOffline(true); return; }
+        if (c === 'online') { m.setOffline(false); window.dispatchEvent(new Event('online')); return; }
+        if (c === 'external-ready') return m.setExternalState('Available', '0');
+        if (c === 'external-lunch') return m.setExternalState('Idle', m.idleCodes[1].id);
+        if (c === 'external-rona') return m.setExternalState('RONA', m.idleCodes[4].id);
+        m[c]();
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,46 @@
+{
+  "area": {
+    "navigation": [
+      {
+        "nav": {
+          "label": "My Status",
+          "icon": "stored-info",
+          "iconType": "momentumDesign",
+          "navigateTo": "accessible-agent",
+          "align": "top",
+          "isDefaultLandingPage": true
+        },
+        "page": {
+          "id": "accessible-agent",
+          "widgets": {
+            "accessible-widget": {
+              "comp": "accessible-wxcc-widget",
+              "script": "https://REPLACE-WITH-YOUR-HOST/accessible-wxcc-widget/accessible-wxcc-widget.js",
+              "attributes": {
+                "team-dashboard": "true",
+                "team-refresh-seconds": "60"
+              },
+              "properties": {
+                "agentId": "$STORE.agent.agentId",
+                "teamId": "$STORE.agent.teamId",
+                "channelsStatesMap": "$STORE.agent.channelsStatesMap",
+                "taskMap": "$STORE.agentContact.taskMap"
+              },
+              "wrapper": {
+                "title": "My Status",
+                "maximizeAreaName": "app-maximize-area"
+              }
+            }
+          },
+          "layout": {
+            "areas": [["accessible-widget"]],
+            "size": {
+              "cols": [1],
+              "rows": [1]
+            }
+          }
+        }
+      }
+    ]
+  }
+}

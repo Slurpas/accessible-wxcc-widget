@@ -1,0 +1,472 @@
+/* Layout and typography. Sizes are in em so the text-size setting scales everything. */
+:host {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  --awx-scale: 1;
+}
+
+:host([text-size='125']) {
+  --awx-scale: 1.25;
+}
+:host([text-size='150']) {
+  --awx-scale: 1.5;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.awx-root {
+  container-type: inline-size;
+  container-name: awx;
+  height: 100%;
+  overflow: auto;
+  background: var(--awx-bg);
+  color: var(--awx-text);
+  font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
+  font-size: calc(20px * var(--awx-scale));
+  line-height: 1.35;
+  padding: 0.6em;
+}
+
+.awx-grid {
+  display: grid;
+  gap: 0.6em;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* ---------- Header / settings ---------- */
+.awx-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5em;
+}
+
+.awx-title {
+  font-size: 1em;
+  font-weight: 700;
+  margin: 0;
+}
+
+.awx-settings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em;
+}
+
+.small-btn {
+  min-height: 48px;
+  min-width: 48px;
+  padding: 0.3em 0.8em;
+  font: inherit;
+  font-size: 0.85em;
+  font-weight: 700;
+  color: var(--awx-btn-fg);
+  background: var(--awx-btn-bg);
+  border: 2px solid var(--awx-border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.small-btn[aria-pressed='true'] {
+  border-color: var(--awx-current-ring);
+  border-width: 3px;
+}
+
+/* ---------- Banners ---------- */
+.conn-banner {
+  margin: 0;
+  padding: 0.6em 0.8em;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.95em;
+}
+.conn-banner[data-kind='error'] {
+  background: var(--awx-error-msg-bg);
+  color: var(--awx-error-msg-fg);
+}
+.conn-banner[data-kind='warning'],
+.conn-banner[data-kind='mock'] {
+  background: var(--awx-warn-bg);
+  color: var(--awx-warn-fg);
+}
+.conn-banner[data-kind='info'] {
+  background: var(--awx-panel-bg);
+  color: var(--awx-text);
+  border: 2px solid var(--awx-border);
+}
+
+/* ---------- Panels ---------- */
+.panel {
+  background: var(--awx-panel-bg);
+  border: 2px solid var(--awx-border);
+  border-radius: 12px;
+  padding: 0.7em;
+  min-width: 0;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5em;
+  flex-wrap: wrap;
+}
+
+.panel-title {
+  margin: 0 0 0.4em;
+  font-size: 1.05em;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ---------- Current status ---------- */
+.status-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4em;
+  padding: 0.4em 0.6em;
+  border-radius: 10px;
+  min-height: 3.6em;
+  border: 4px solid transparent;
+}
+
+.status-icon {
+  font-size: min(3.6em, 13cqi);
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
+.status-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.status-label {
+  /* Fit the container width: big in wide panels, never broken mid-word in narrow ones. */
+  font-size: max(1.8em, min(3.6em, 13cqi));
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  overflow-wrap: break-word;
+}
+
+.status-reason {
+  font-size: 1.4em;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+.status-reason:empty {
+  display: none;
+}
+
+.status-help {
+  margin: 0.4em 0 0;
+  font-size: 1.05em;
+  font-weight: 600;
+}
+
+.status-since {
+  margin: 0.2em 0 0;
+  color: var(--awx-text-muted);
+  font-size: 0.9em;
+}
+.status-since:empty {
+  display: none;
+}
+
+.status-request {
+  margin: 0.5em 0 0;
+  padding: 0.5em 0.7em;
+  border-radius: 8px;
+  font-weight: 800;
+  font-size: 1.05em;
+}
+.status-request[data-kind='pending'] {
+  border: 3px dashed var(--awx-text);
+}
+.status-request[data-kind='error'] {
+  background: var(--awx-error-msg-bg);
+  color: var(--awx-error-msg-fg);
+}
+.status-request[data-kind='warning'] {
+  background: var(--awx-warn-bg);
+  color: var(--awx-warn-fg);
+}
+
+/* Status colours (chips, team rows) */
+[data-status='READY'] { background: var(--awx-ready-bg); color: var(--awx-ready-fg); }
+[data-status='NOT_READY'] { background: var(--awx-notready-bg); color: var(--awx-notready-fg); }
+[data-status='BUSY'] { background: var(--awx-busy-bg); color: var(--awx-busy-fg); }
+[data-status='WRAP_UP'] { background: var(--awx-wrapup-bg); color: var(--awx-wrapup-fg); }
+[data-status='RONA'] { background: var(--awx-notready-bg); color: var(--awx-notready-fg); }
+[data-status='OFFLINE'] { background: var(--awx-offline-bg); color: var(--awx-offline-fg); }
+[data-status='UNKNOWN'] { background: var(--awx-unknown-bg); color: var(--awx-unknown-fg); }
+[data-status='LOADING'] { background: var(--awx-error-bg); color: var(--awx-error-fg); border-style: dashed; border-color: var(--awx-border); }
+[data-status='ERROR'] { background: var(--awx-error-bg); color: var(--awx-error-fg); border-style: dashed; border-color: var(--awx-warn-bg); }
+
+/* ---------- Status buttons ---------- */
+.state-buttons {
+  display: grid;
+  gap: 0.5em;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5em), 1fr));
+}
+
+.state-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4em;
+  min-height: 80px;
+  padding: 0.4em 0.6em;
+  font: inherit;
+  font-size: 1.4em; /* 28px at normal size */
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  border: 4px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: center;
+  overflow-wrap: break-word;
+}
+
+.btn-icon {
+  font-size: 1.1em;
+  line-height: 1;
+}
+
+.btn-current {
+  white-space: nowrap;
+  font-size: 0.5em;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  padding: 0.15em 0.4em;
+  border-radius: 6px;
+  border: 2px solid currentColor;
+}
+.btn-current:empty {
+  display: none;
+}
+
+.tone-ready { background: var(--awx-ready-bg); color: var(--awx-ready-fg); }
+.tone-notready { background: var(--awx-notready-bg); color: var(--awx-notready-fg); }
+.tone-lunch { background: var(--awx-lunch-bg); color: var(--awx-lunch-fg); }
+.tone-break { background: var(--awx-break-bg); color: var(--awx-break-fg); }
+.tone-admin { background: var(--awx-admin-bg); color: var(--awx-admin-fg); }
+
+.state-btn.is-current {
+  border-color: var(--awx-current-ring);
+  box-shadow: 0 0 0 3px var(--awx-bg), 0 0 0 6px var(--awx-current-ring);
+}
+
+.state-btn[aria-disabled='true'] {
+  cursor: not-allowed;
+  filter: saturate(0.4);
+}
+.state-btn.is-pending {
+  filter: none;
+  border-style: dashed;
+  border-color: var(--awx-current-ring);
+}
+
+.buttons-note {
+  margin: 0.5em 0 0;
+  font-weight: 700;
+}
+
+/* ---------- Current call ---------- */
+.call-empty {
+  margin: 0;
+  font-size: 1.3em;
+  font-weight: 700;
+  color: var(--awx-text-muted);
+}
+
+.call-number-label {
+  margin: 0;
+  font-size: 0.9em;
+  font-weight: 700;
+  color: var(--awx-text-muted);
+}
+
+.call-number {
+  margin: 0 0 0.2em;
+  font-size: min(3em, 11cqi);
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.call-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em;
+  margin: 0 0 0.5em;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.2em 0.6em;
+  border-radius: 8px;
+  font-weight: 900;
+  font-size: 1.1em;
+  border: 3px solid var(--awx-text);
+  background: var(--awx-bg);
+  color: var(--awx-text);
+}
+.badge-state[data-call-state='CONNECTED'] { background: var(--awx-ready-bg); color: var(--awx-ready-fg); border-color: var(--awx-ready-bg); }
+.badge-state[data-call-state='RINGING'] { background: var(--awx-busy-bg); color: var(--awx-busy-fg); border-color: var(--awx-busy-bg); }
+.badge-state[data-call-state='ON_HOLD'] { background: var(--awx-break-bg); color: var(--awx-break-fg); border-color: var(--awx-break-bg); }
+.badge-state[data-call-state='WRAP_UP'] { background: var(--awx-wrapup-bg); color: var(--awx-wrapup-fg); border-color: var(--awx-wrapup-bg); }
+
+.call-details {
+  margin: 0;
+  display: grid;
+  gap: 0.3em;
+}
+.call-row {
+  display: grid;
+  grid-template-columns: minmax(6em, max-content) 1fr;
+  gap: 0.6em;
+  align-items: baseline;
+}
+.call-row dt {
+  font-weight: 700;
+  color: var(--awx-text-muted);
+}
+.call-row dd {
+  margin: 0;
+  font-weight: 800;
+  font-size: 1.1em;
+  overflow-wrap: anywhere;
+}
+.call-row-queue dd {
+  font-size: 1.5em;
+}
+.call-others,
+.call-error {
+  margin: 0.5em 0 0;
+  font-weight: 700;
+}
+
+/* ---------- Team ---------- */
+.team-summary {
+  margin: 0 0 0.3em;
+  font-size: 1.1em;
+  font-weight: 800;
+}
+.team-status {
+  margin: 0 0 0.4em;
+  padding: 0.3em 0.6em;
+  border-radius: 8px;
+  font-weight: 700;
+}
+.team-status[data-kind='error'] { background: var(--awx-error-msg-bg); color: var(--awx-error-msg-fg); }
+.team-status[data-kind='warning'] { background: var(--awx-warn-bg); color: var(--awx-warn-fg); }
+.team-status[data-kind='info'] { color: var(--awx-info-fg); padding-left: 0; }
+
+.team-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35em;
+}
+.team-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.6em;
+  min-height: 56px;
+  padding: 0.3em 0.6em;
+  border-radius: 10px;
+  font-size: 1.15em;
+  font-weight: 800;
+}
+.team-indicator {
+  font-size: 1.3em;
+  width: 1.4em;
+  text-align: center;
+}
+.team-name {
+  overflow-wrap: anywhere;
+}
+.team-state {
+  font-weight: 900;
+  text-align: right;
+}
+.team-empty {
+  font-weight: 700;
+}
+.panel-team.is-stale .team-row {
+  opacity: 0.75;
+  border: 3px dashed var(--awx-warn-bg);
+}
+.team-note {
+  margin: 0.5em 0 0;
+  font-size: 0.85em;
+  color: var(--awx-text-muted);
+}
+
+/* ---------- Responsive ---------- */
+@container awx (max-width: 359px) {
+  .awx-root {
+    font-size: calc(17px * var(--awx-scale));
+  }
+  .call-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .team-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .team-state {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
+}
+
+@container awx (min-width: 900px) {
+  .awx-lower {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0.6em;
+    align-items: start;
+  }
+  .awx-top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+    gap: 0.6em;
+    align-items: stretch;
+  }
+}
+
+@container awx (max-width: 899px) {
+  .awx-lower,
+  .awx-top {
+    display: grid;
+    gap: 0.6em;
+  }
+}
+
+.diagnostic {
+  font-size: 1.2em;
+  font-weight: 700;
+}

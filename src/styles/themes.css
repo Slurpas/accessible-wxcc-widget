@@ -1,0 +1,71 @@
+/*
+ * Colour tokens. Status colours are identical in both themes (white text on
+ * a dark chip) so the agent learns one colour per status. Every text/background
+ * pair below is checked for WCAG contrast in tests/contrast.test.js.
+ */
+:host {
+  /* Status chips: background / text */
+  --awx-ready-bg: #075d2c;
+  --awx-ready-fg: #ffffff;
+  --awx-notready-bg: #b42318;
+  --awx-notready-fg: #ffffff;
+  --awx-busy-bg: #9a5700;
+  --awx-busy-fg: #ffffff;
+  --awx-wrapup-bg: #174ea6;
+  --awx-wrapup-fg: #ffffff;
+  --awx-offline-bg: #555555;
+  --awx-offline-fg: #ffffff;
+  --awx-unknown-bg: #555555;
+  --awx-unknown-fg: #ffffff;
+  --awx-error-bg: #3d3d3d;
+  --awx-error-fg: #ffffff;
+
+  /* Button tones for idle codes */
+  --awx-lunch-bg: #9a5700;
+  --awx-lunch-fg: #ffffff;
+  --awx-break-bg: #ffd60a;
+  --awx-break-fg: #000000;
+  --awx-admin-bg: #174ea6;
+  --awx-admin-fg: #ffffff;
+}
+
+/* High Contrast Dark (default) */
+:host,
+:host([theme='dark']) {
+  --awx-bg: #000000;
+  --awx-panel-bg: #121212;
+  --awx-text: #ffffff;
+  --awx-text-muted: #e6e6e6;
+  --awx-border: #8c8c8c;
+  --awx-focus: #ffd60a;
+  --awx-focus-inner: #000000;
+  --awx-current-ring: #ffffff;
+  --awx-warn-bg: #ffd60a;
+  --awx-warn-fg: #000000;
+  --awx-error-msg-bg: #ffb4ab;
+  --awx-error-msg-fg: #000000;
+  --awx-info-fg: #e6e6e6;
+  --awx-btn-bg: #2b2b2b;
+  --awx-btn-fg: #ffffff;
+  color-scheme: dark;
+}
+
+/* High Contrast Light */
+:host([theme='light']) {
+  --awx-bg: #ffffff;
+  --awx-panel-bg: #f2f2f2;
+  --awx-text: #000000;
+  --awx-text-muted: #1a1a1a;
+  --awx-border: #595959;
+  --awx-focus: #0b3d91;
+  --awx-focus-inner: #ffffff;
+  --awx-current-ring: #000000;
+  --awx-warn-bg: #ffd60a;
+  --awx-warn-fg: #000000;
+  --awx-error-msg-bg: #8c1d18;
+  --awx-error-msg-fg: #ffffff;
+  --awx-info-fg: #1a1a1a;
+  --awx-btn-bg: #ffffff;
+  --awx-btn-fg: #000000;
+  color-scheme: light;
+}

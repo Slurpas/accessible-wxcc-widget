@@ -1,0 +1,50 @@
+/* Focus, motion and system high-contrast support. */
+
+/* Very visible focus ring: two-colour so it shows on any background. */
+button:focus-visible,
+[tabindex]:focus-visible {
+  outline: 4px solid var(--awx-focus);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 3px var(--awx-focus-inner);
+}
+
+/* Visually hidden but read by screen readers (live regions). */
+.sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* No animations are used; this guards against any inherited ones. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Windows High Contrast / forced colours: keep borders and text visible. */
+@media (forced-colors: active) {
+  .status-card,
+  .state-btn,
+  .team-row,
+  .badge,
+  .panel {
+    forced-color-adjust: auto;
+    border: 3px solid CanvasText;
+  }
+  .state-btn.is-current {
+    outline: 4px solid Highlight;
+  }
+  .state-btn[aria-disabled='true'] {
+    color: GrayText;
+  }
+}
