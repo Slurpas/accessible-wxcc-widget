@@ -25,12 +25,16 @@ export function isInsideDesktop(win = globalThis) {
   }
 }
 
-// The SDK module is a singleton inside this bundle. If the layout places the
-// widget more than once (for example a persistent tab and a custom page),
-// all instances share one initialised SDK and it is released only when the
-// last instance unmounts.
+// The SDK module is a singleton inside this bundle and is initialised once
+// for the lifetime of the Desktop page. All widget instances (and remounts
+// after the agent switches page) share it.
+//
+// Desktop.config.cleanup() is deliberately never called: in SDK 3.0.1 it
+// clears the config module's reference to AGENTX_SERVICE for good, so any
+// later init() only logs "SERVICE is not defined..." and every call (e.g.
+// stateChangeV2) silently does nothing. Unmounting therefore removes only
+// this widget's own listeners.
 let sdkPromise = null;
-let sdkUsers = 0;
 
 async function loadAndInitSdk() {
   let Desktop;
@@ -51,17 +55,6 @@ async function loadAndInitSdk() {
   return Desktop;
 }
 
-function releaseSdk(Desktop) {
-  sdkUsers = Math.max(0, sdkUsers - 1);
-  if (sdkUsers > 0) return;
-  sdkPromise = null;
-  try {
-    Desktop.config.cleanup();
-  } catch (err) {
-    log.warn('SDK cleanup failed', err);
-  }
-}
-
 /**
  * Load and initialise the SDK. Resolves to an adapter object; rejects with
  * an Error whose `code` is NOT_IN_DESKTOP or SDK_INIT_FAILED.
@@ -79,15 +72,14 @@ export async function connectDesktop(win = globalThis) {
     });
   }
   const Desktop = await sdkPromise;
-  sdkUsers += 1;
-  return createDesktopAdapter(Desktop, () => releaseSdk(Desktop));
+  return createDesktopAdapter(Desktop);
 }
 
 /**
  * Wrap the Desktop SDK object in the adapter interface used by services.
  * Exported for tests; production code uses connectDesktop().
  */
-export function createDesktopAdapter(Desktop, release = () => {}) {
+export function createDesktopAdapter(Desktop) {
   const subscriptions = new Set();
 
   function subscribe(module, eventName, handler) {
@@ -140,11 +132,9 @@ export function createDesktopAdapter(Desktop, release = () => {}) {
       return subscribe(Desktop.agentContact, eventName, handler);
     },
 
-    /** Remove only our own listeners, then release the shared SDK instance. */
+    /** Remove only our own listeners. The shared SDK stays initialised (see above). */
     cleanup() {
       for (const off of [...subscriptions]) off();
-      release();
-      release = () => {};
     },
   };
 }

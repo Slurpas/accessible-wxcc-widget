@@ -9,7 +9,7 @@ npm run check     # tests + production build + bundle verification
 
 ### Results: 2 Nov 2026, Node 24.13, Vitest 5.1, jsdom 30.1
 
-**9 test files, 124 tests, all passed.**
+**10 test files, 126 tests, all passed.**
 
 | File | Tests | Covers |
 |---|---|---|
@@ -19,6 +19,7 @@ npm run check     # tests + production build + bundle verification
 | `contact-events.test.js` | 17 | ANI/DNIS/queue extraction, outdial customer number, CAD fallback, hold, full lifecycle offer → connected → ANI update → hold → wrap-up → cleared, RONA, restore from task map (incl. Map-like observable; unknown shapes never blank the panel), multiple interactions, memory cleared on stop |
 | `team-dashboard.test.js` | 9 | Team filter, self excluded, unfiltered warning, Available + Idle requests, no request without a UUID profile, **failure keeps last list and never marks OFFLINE**, failure response type, refresh limits, stale flag, timer cleanup |
 | `widget.test.js` | 16 | Whole Web Component with the mock adapter: rendering, headings, aria-pressed, pending → confirmed + live announcement, **focus not stolen**, failure announced assertively, disabled without agentId, external change, call lifecycle and spoken number, team filter/counts, team off by attribute, **team failure does not affect status buttons**, offline → "STATUS NOT VERIFIED", theme/text-size preferences (only prefs stored), unmount cleanup + remount, properties set before upgrade |
+| `desktop-sdk.test.js` | 2 | Real adapter with a fake SDK: unmount + remount keeps `stateChangeV2` working, `Desktop.config.cleanup()` never called, only own listeners removed |
 | `outside-desktop.test.js` | 3 | Real adapter: outside Desktop shows a diagnostic, buttons disabled, mock **not** used even with `mock="true"` |
 | `contrast.test.js` | 26 | WCAG contrast of every colour pair in both themes: chips ≥ 4.5:1, body text ≥ 7:1, borders/focus ≥ 3:1 |
 | `security.test.js` | 7 | No secrets, no direct network calls, no token access, storage only for prefs, no innerHTML/eval, no third-party URLs, logger strips payloads |

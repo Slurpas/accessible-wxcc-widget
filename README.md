@@ -80,7 +80,7 @@ own runtime validation code.
 | # | Topic | Finding | Source |
 |---|---|---|---|
 | 1 | Package | `@wxcc-desktop/sdk` is the current package; `@agentx/*` packages are deprecated. | Get Started page |
-| 2 | Init | `await Desktop.config.init({ widgetName, widgetProvider })` (object form required since SDK 2.0); `Desktop.config.cleanup()` on teardown. | Get Started page, `config-jsapi.d.ts` |
+| 2 | Init | `await Desktop.config.init({ widgetName, widgetProvider })` (object form required since SDK 2.0); `Desktop.config.cleanup()` is **not** called: in SDK 3.0.1 it permanently drops the service reference, so a remounted widget could no longer change state ("SERVICE is not defined..."). The SDK stays initialised for the page; unmount removes only our listeners. | Get Started page, `config-jsapi.d.ts` |
 | 3 | Runs only in Desktop | The SDK reads the global `AGENTX_SERVICE` when it is first evaluated, and importing it outside Desktop throws `ReferenceError`. **Decision:** check for the global first and only then lazy-load the SDK, so outside Desktop the widget shows a diagnostic message instead. Verified by building a probe bundle. | SDK bundle, probe test |
 | 4 | Web Component | Desktop places widgets inside nested Shadow DOM; a custom element with its own Shadow DOM is recommended. Layout keys: `comp`, `script`, `properties`, `attributes`, `wrapper`. | Custom Widgets page, Help article ng08gqeb |
 | 5 | Granular state | With granular state control, read `STORE.agent.channelsStatesMap`, listen for `eAgentChannelStateChanged`, change with `stateChangeV2`. The global `subStatus` and the `updated` event are **not valid** in this model. | Agent State page, SDK Reference notes |

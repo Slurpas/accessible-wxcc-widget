@@ -55,7 +55,7 @@ stores an access token.
 - [x] Unnecessary permissions: agent-session SDK calls only; REST/admin APIs not used.
 - [x] External tracking: none.
 - [x] Persistent customer information: none; only theme/text-size stored.
-- [x] Event cleanup: every SDK listener is removed on unmount (tested); timers cleared; shared SDK released when the last widget instance unmounts.
+- [x] Event cleanup: every SDK listener is removed on unmount (tested); timers cleared. The shared SDK stays initialised for the Desktop page (calling `Desktop.config.cleanup()` would break it for later remounts).
 - [x] Status synchronisation: Webex is the source of truth; requested state never shown as confirmed (tested).
 - [x] API assumptions: listed with fallbacks in README "Assumptions".
 - [x] Accessible buttons: native `<button>`, ≥ 80 px tall, labels, `aria-pressed`, `aria-disabled` (keeps focus), visible focus ring.
