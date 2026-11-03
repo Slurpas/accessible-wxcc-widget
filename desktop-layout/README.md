@@ -37,12 +37,14 @@ Rollback: assign the team back to the original layout.
 | `teamId` | `$STORE.agent.teamId` | Filters the team list to the agent's own team (live list and buddy-list fallback). |
 | `channelsStatesMap` | `$STORE.agent.channelsStatesMap` | Current status (granular state model). Required for the status display. |
 | `taskMap` | `$STORE.agentContact.taskMap` | Restores the call panel if the page opens during a call. |
-| `isOutboundEnabledForAgent` | `$STORE.agent.isOutboundEnabledForAgent` | "Call back" is hidden when outdial is off for the agent. |
+| `isOutboundEnabledForAgent` | `$STORE.agent.isOutboundEnabledForAgent` | "Call" is hidden when outdial is off for the agent. |
 | `isOutboundEnabledForTenant` | `$STORE.agent.isOutboundEnabledForTenant` | Same, for the tenant. |
-| `outDialEp` | `$STORE.agent.outDialEp` | Outdial entry point used by "Call back". **Required for Call back**: the SDK does not provide it any other way. Without it the panel says "Call back is not set up yet". |
+| `outDialEp` | `$STORE.agent.outDialEp` | Outdial entry point used by "Call" in Recent calls. |
 
-`isOutboundEnabledForAgent` / `isOutboundEnabledForTenant` fall back to the SDK's
-agent data when not bound.
+The three outdial bindings are optional. Without them the widget reads the same
+values from Desktop's own agent profile (read-only). If no entry point is found,
+the panel says so and `await accessibleWxccProbe()` shows where it looked
+(`outdial` in the report).
 
 | Attribute | Values | Default |
 |---|---|---|
@@ -57,11 +59,14 @@ agent data when not bound.
 
 The "Recent calls" panel lists the agent's calls in this Desktop session (up to
 25, newest first): a large number, IN (teal) / OUT (purple) / MISSED (red) /
-NOW (green), time and talk time. Queue and entry point names are not shown. It is
+NOW (green), time and talk time. Queue and entry point names are not shown.
+
+"Call" is an ordinary outdial from the agent to that number (not a queued
+Webex Callback). It is
 kept in memory only. It is not saved in the browser and is gone when Desktop is
 reloaded or the agent signs out.
 
-"Call back" starts a normal Desktop outdial (`Desktop.dialer.startOutdial`) with
+"Call" starts a normal Desktop outdial (`Desktop.dialer.startOutdial`) with
 the agent's own outdial entry point, after a second "Call now" press. It is
 disabled during a call and hidden when outdial is not enabled for the agent.
 Desktop applies the same rules as its own dial pad.

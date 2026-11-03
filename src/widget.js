@@ -479,22 +479,26 @@ export class AccessibleWxccWidget extends HTMLElement {
     this._renderHistory();
   }
 
-  /** Outdial settings from the layout ($STORE) first, then the SDK's agent data. */
+  /** Outdial settings: layout ($STORE) first, then Desktop's agent profile, then the SDK's agent data. */
   _outdial() {
-    let latest = {};
-    try {
-      latest = (this._adapter && this._adapter.getLatestData()) || {};
-    } catch {
-      /* optional */
-    }
-    const pick = (k) => (this._props[k] !== undefined && this._props[k] !== null ? this._props[k] : latest[k]);
+    const read = (fn) => {
+      try {
+        return (this._adapter && fn(this._adapter)) || {};
+      } catch {
+        return {};
+      }
+    };
+    const profile = read((a) => typeof a.getOutdialSettings === 'function' && a.getOutdialSettings());
+    const latest = read((a) => a.getLatestData());
+    const has = (v) => v !== undefined && v !== null && v !== '';
+    const pick = (k) => [this._props[k], profile[k], latest[k]].find(has);
     const ep = pick('outDialEp');
     const entryPointId = typeof ep === 'string' ? ep : ep && typeof ep === 'object' ? String(ep.id || '') : '';
     const off = pick('isOutboundEnabledForAgent') === false || pick('isOutboundEnabledForTenant') === false;
     const allowed = !!entryPointId && !off;
     if (!allowed && !this._warnedOutdial) {
       this._warnedOutdial = true; // for admins (Desktop logs); values are not logged
-      log.warn(off ? 'Call back hidden: outdial is disabled for this agent or tenant' : 'Call back hidden: no outdial entry point. Bind $STORE.agent.outDialEp in the Desktop layout');
+      log.warn(off ? 'Call hidden: outdial is disabled for this agent or tenant' : 'Call hidden: no outdial entry point found (layout $STORE.agent.outDialEp, Desktop profile). Run accessibleWxccProbe() for details');
     }
     return { allowed, entryPointId, reason: allowed ? '' : off ? 'off' : 'noEntryPoint' };
   }

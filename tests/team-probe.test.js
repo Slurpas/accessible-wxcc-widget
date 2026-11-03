@@ -172,6 +172,20 @@ describe('team probe', () => {
     expect(r.callHistory).toEqual({ available: true, ok: false, error: 'Forbidden for <email>' });
   });
 
+  it('reports where the outdial entry point is, without its value', async () => {
+    const { adapter, win, connect } = setup();
+    win.AGENTX_SERVICE = { conf: { profile: { outDialEp: '9f0c1a2b-3c4d-4e5f-8a9b-0c1d2e3f4a5b', isOutboundEnabledForAgent: true, outdialANIId: 'ani-1', agentName: 'Anna Svensson' } } };
+    adapter.getOutdialSettings = () => ({ outDialEp: win.AGENTX_SERVICE.conf.profile.outDialEp });
+    const r = await runTeamProbe({ win, connect, waitMs: 20, print: false });
+    expect(r.outdial).toMatchObject({
+      entryPointFound: true,
+      entryPointType: 'string',
+      profilePresent: true,
+      profileKeys: { outDialEp: 'string (UUID)', isOutboundEnabledForAgent: 'boolean true', outdialANIId: 'string' },
+    });
+    expect(JSON.stringify(r)).not.toMatch(/9f0c1a2b|Anna|ani-1/);
+  });
+
   it('reads no catalogue from objects without one', () => {
     expect(datasetCatalog({})).toEqual({ constants: {}, factoryApi: [], names: [] });
   });

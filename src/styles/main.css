@@ -504,12 +504,6 @@
 }
 
 /* ---------- Recent calls ---------- */
-.history-note {
-  margin: 0 0 0.4em;
-  color: var(--awx-text-muted);
-  font-weight: 700;
-  font-size: 0.85em;
-}
 .history-status {
   margin: 0 0 0.4em;
   padding: 0.3em 0.6em;

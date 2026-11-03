@@ -15,6 +15,7 @@ import { log, setLogSink } from '../utils/logger.js';
 
 const WIDGET_NAME = 'accessible-wxcc-widget';
 const WIDGET_PROVIDER = 'accessible-wxcc-widget';
+const OUTDIAL_EP_FIELDS = ['outDialEp', 'outdialEp', 'outDialEntryPointId', 'outdialEntryPointId'];
 
 /** True when the page is Webex Contact Center Desktop (or a Desktop-hosted frame). */
 export function isInsideDesktop(win = globalThis) {
@@ -122,6 +123,29 @@ export function createDesktopAdapter(Desktop) {
     /** Documented: Desktop.actions.getTaskMap(). Used to restore a call that was active before mount. */
     getTaskMap() {
       return Desktop.actions.getTaskMap();
+    },
+
+    /**
+     * Outdial settings from Desktop's own agent profile (AGENTX_SERVICE.conf.profile,
+     * the object the SDK builds latestData from). The SDK reads the profile but
+     * leaves the outdial entry point out of latestData, so it is read here.
+     * Read-only, and only these three fields are copied.
+     */
+    getOutdialSettings() {
+      let profile = null;
+      try {
+        const svc = globalThis.AGENTX_SERVICE;
+        profile = svc && svc.conf && svc.conf.profile;
+      } catch {
+        /* not available */
+      }
+      if (!profile || typeof profile !== 'object') return {};
+      const ep = OUTDIAL_EP_FIELDS.map((f) => profile[f]).find((v) => v !== undefined && v !== null && v !== '');
+      return {
+        outDialEp: ep,
+        isOutboundEnabledForAgent: profile.isOutboundEnabledForAgent,
+        isOutboundEnabledForTenant: profile.isOutboundEnabledForTenant,
+      };
     },
 
     /** Documented: Desktop.agentContact.end({interactionId}). Same as Desktop's own End button. */

@@ -74,10 +74,7 @@ export function createTeamList({ onRefresh }) {
     } else if (stale) {
       msg = STRINGS.teamStale(formatTime(s.lastSuccess));
       kind = 'warning';
-    } else if (s.lastSuccess && s.live) {
-      msg = STRINGS.teamLive;
-      kind = 'info';
-    } else if (s.lastSuccess) {
+    } else if (s.lastSuccess && !s.live) {
       msg = STRINGS.teamUpdated(formatTime(s.lastSuccess), s.refreshSeconds);
       kind = 'info';
     }

@@ -58,6 +58,7 @@ export function createMockAdapter({ latencyMs = 400, manyCodes = false, realtime
   let failNext = false;
   let failNextDial = false;
   let failNextEnd = false;
+  let profileEp = MOCK_OUTDIAL_EP;
   let offline = false;
   let callSeq = 0;
   // Real-time team data (shape of wxcc.rtd.agentchanneltypestatus / agentchannelstatus).
@@ -154,8 +155,12 @@ export function createMockAdapter({ latencyMs = 400, manyCodes = false, realtime
         channelsStatesMap: { telephony: { ...channel, stateChangeTimestamp: Math.floor(channel.stateChangeTimestamp / 1000) } },
         isOutboundEnabledForAgent: true,
         isOutboundEnabledForTenant: true,
-        outDialEp: MOCK_OUTDIAL_EP,
       };
+    },
+
+    /** Like the real adapter: the entry point comes from Desktop's agent profile, not latestData. */
+    getOutdialSettings() {
+      return { outDialEp: profileEp, isOutboundEnabledForAgent: true, isOutboundEnabledForTenant: true };
     },
 
     async stateChangeV2(payload) {
@@ -320,6 +325,10 @@ export function createMockAdapter({ latencyMs = 400, manyCodes = false, realtime
           { key: `${agentId}:c`, operation: contactStatus ? 'UPDATE' : 'DELETE', data: { agentId, channelType: 'telephony', interactionId: 'mock-int', contactStatus } },
         ]);
         rtPush('wxcc.rtd.agentchanneltypestatus', [rtItem(a)]);
+      },
+      /** Simulate a Desktop profile without an outdial entry point. */
+      setProfileOutdialEp(ep) {
+        profileEp = ep;
       },
       failNextEndCall() {
         failNextEnd = true;

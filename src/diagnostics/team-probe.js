@@ -21,7 +21,7 @@
 import { connectDesktop } from '../services/desktop-sdk.js';
 import { REASON_FIELDS } from '../services/team-dashboard.js';
 
-export const PROBE_VERSION = 4;
+export const PROBE_VERSION = 5;
 
 // Likely dataset names. The real names are not documented; add more with
 // { datasets: [...] } after searching Desktop's sources for "datasetName".
@@ -344,6 +344,50 @@ function findList(res) {
   return null;
 }
 
+const OUTDIAL_KEY_RE = /out.?dial|outbound|entry.?point|\bani/i;
+
+/** Outdial-related keys of an object, with type only (booleans with their value). */
+function outdialKeys(obj) {
+  const out = {};
+  if (!obj || typeof obj !== 'object') return null;
+  for (const k of Object.keys(obj)) {
+    if (!OUTDIAL_KEY_RE.test(k)) continue;
+    const v = safeGet(obj, k);
+    if (typeof v === 'boolean') out[k] = `boolean ${v}`;
+    else if (typeof v === 'string') out[k] = v === '' ? 'string (empty)' : UUID_LIKE.test(v) ? 'string (UUID)' : 'string';
+    else out[k] = describeShape(v, 2);
+  }
+  return out;
+}
+
+const UUID_LIKE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Where the widget can find the outdial entry point used by "Call". */
+function probeOutdial(adapter, win) {
+  const svc = safeGet(win, 'AGENTX_SERVICE');
+  const conf = svc && safeGet(svc, 'conf');
+  const profile = conf && safeGet(conf, 'profile');
+  let latest = null;
+  let resolved = {};
+  try {
+    latest = adapter.getLatestData();
+  } catch {
+    /* ignore */
+  }
+  try {
+    resolved = typeof adapter.getOutdialSettings === 'function' ? adapter.getOutdialSettings() : {};
+  } catch {
+    /* ignore */
+  }
+  return {
+    entryPointFound: !!resolved.outDialEp,
+    entryPointType: resolved.outDialEp === undefined ? 'missing' : typeof resolved.outDialEp,
+    profilePresent: !!profile,
+    profileKeys: outdialKeys(profile),
+    latestDataKeys: outdialKeys(latest),
+  };
+}
+
 export async function runTeamProbe({ datasets = [], waitMs = 10000, win = globalThis, connect = connectDesktop, print = true } = {}) {
   const report = { probe: 'accessible-wxcc-widget team probe', version: PROBE_VERSION, at: new Date().toISOString() };
   let adapter = null;
@@ -355,6 +399,7 @@ export async function runTeamProbe({ datasets = [], waitMs = 10000, win = global
   }
   if (adapter) report.buddyAgentsV2 = await probeBuddies(adapter);
   if (adapter) report.callHistory = await probeHistory(adapter);
+  if (adapter) report.outdial = probeOutdial(adapter, win);
   report.realTimeData = await probeRtdwc(win, datasets.map(String), waitMs);
   if (adapter) adapter.cleanup();
   if (print) console.info(`[accessible-wxcc-widget] Team probe report (contains no names, IDs or tokens; safe to share):\n${JSON.stringify(report, null, 2)}`);

@@ -76,7 +76,7 @@ describe('<accessible-wxcc-widget>', () => {
 
   it('team list is live: exact status, reasons and log-outs appear without refreshing', async () => {
     await mount({}, { agentId: currentAdapter.agentId, teamId: currentAdapter.teamId });
-    expect(q('.team-status').textContent).toBe('Live: updates as soon as a colleague changes status.');
+    expect(q('.team-status').hidden).toBe(true); // live: no explanation needed
     expect(q('.team-refresh').hidden).toBe(true);
     expect(q('.panel-team').textContent).not.toMatch(/Webex lists|Team filter/);
     const row = (name) => qa('.team-row').find((r) => r.textContent.includes(name));
@@ -164,6 +164,7 @@ describe('<accessible-wxcc-widget>', () => {
     expect(q('.call-number').textContent).toBe('+46 46 123 456');
     expect(q('.call-number').getAttribute('aria-label')).toBe('plus 4 6, 4 6, 1 2 3, 4 5 6');
     expect(q('.call-queue').textContent).toBe('Technical Support EMEA');
+    expect(q('.panel-call').textContent).not.toMatch(/Caller number|Dialled number/);
     expect(q('.badge-state').textContent).toBe('RINGING');
     currentAdapter.controls.answer();
     await wait();
@@ -244,6 +245,7 @@ describe('<accessible-wxcc-widget>', () => {
   it('lists finished calls under Recent calls, newest first', async () => {
     await mount({}, { agentId: currentAdapter.agentId });
     expect(q('.history-empty').textContent).toContain('No calls yet');
+    expect(q('.panel-history').textContent).not.toContain('Cleared when Desktop');
     currentAdapter.controls.incomingCall({ ani: '+46 46 123 456' });
     await wait();
     expect(q('.history-kind').textContent).toBe('NOW');
@@ -289,7 +291,8 @@ describe('<accessible-wxcc-widget>', () => {
     await mount({}, { agentId: currentAdapter.agentId });
     await finishedCall();
     const back = q('.history-back');
-    expect(back.getAttribute('aria-label')).toBe('Call back plus 4 6, 4 6, 1 2 3, 4 5 6');
+    expect(back.textContent).toBe('Call');
+    expect(back.getAttribute('aria-label')).toBe('Call plus 4 6, 4 6, 1 2 3, 4 5 6');
     back.focus();
     back.click();
     expect(dial).not.toHaveBeenCalled();
@@ -298,7 +301,7 @@ describe('<accessible-wxcc-widget>', () => {
     q('.history-call-now').click();
     expect(dial).toHaveBeenCalledTimes(1);
     expect(dial.mock.calls[0][0]).toEqual({
-      entryPointId: currentAdapter.getLatestData().outDialEp,
+      entryPointId: currentAdapter.getOutdialSettings().outDialEp, // from Desktop's agent profile
       destination: '+4646123456',
       direction: 'OUTBOUND',
       attributes: {},
@@ -405,15 +408,14 @@ describe('<accessible-wxcc-widget>', () => {
     expect(q('.call-actions').hidden).toBe(true);
   });
 
-  it('recent calls: no queue or entry point shown, and says why call back is missing', async () => {
-    const latest = currentAdapter.getLatestData;
-    currentAdapter.getLatestData = () => ({ ...latest(), outDialEp: undefined });
+  it('recent calls: no queue or entry point shown, and says why calling is missing', async () => {
+    currentAdapter.controls.setProfileOutdialEp(undefined);
     await mount({}, { agentId: currentAdapter.agentId });
     await finishedCall();
     expect(q('.history-meta').textContent).not.toContain('Technical Support');
     expect(q('.history-info').getAttribute('aria-label')).not.toContain('queue');
     expect(q('.history-back')).toBeNull();
-    expect(q('.history-status').textContent).toContain('outdial settings to the Desktop layout');
+    expect(q('.history-status').textContent).toContain('did not provide the outdial entry point');
     el.outDialEp = '00000000-0000-4000-8000-0000000000e1';
     expect(q('.history-back')).not.toBeNull();
     expect(q('.history-status').hidden).toBe(true);

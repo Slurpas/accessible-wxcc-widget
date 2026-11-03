@@ -24,8 +24,9 @@ export function createCurrentCall({ onEnd = () => {}, onCancel = () => {} } = {}
   const dir = h('span', { class: 'badge badge-dir' });
   const state = h('span', { class: 'badge badge-state' });
   const queue = h('dd', { class: 'call-queue' });
-  const ani = h('dd');
-  const dnis = h('dd');
+  // Only the queue: the customer number is already shown large above, and for
+  // outdials the "queue" is the outdial entry point, which the agent does not need.
+  const queueRow = h('div', { class: 'call-row call-row-queue' }, h('dt', { text: STRINGS.queue }), queue);
   const others = h('p', { class: 'call-others', hidden: true });
   const error = h('p', { class: 'call-error', hidden: true, text: STRINGS.callInfoUnavailable });
 
@@ -80,13 +81,7 @@ export function createCurrentCall({ onEnd = () => {}, onCancel = () => {} } = {}
     number,
     h('p', { class: 'call-badges' }, dir, state),
     actions,
-    h(
-      'dl',
-      { class: 'call-details' },
-      h('div', { class: 'call-row call-row-queue' }, h('dt', { text: STRINGS.queue }), queue),
-      h('div', { class: 'call-row' }, h('dt', { text: STRINGS.callerNumber }), ani),
-      h('div', { class: 'call-row' }, h('dt', { text: STRINGS.dialledNumber }), dnis),
-    ),
+    h('dl', { class: 'call-details' }, queueRow),
     others,
   );
 
@@ -127,8 +122,7 @@ export function createCurrentCall({ onEnd = () => {}, onCancel = () => {} } = {}
     state.dataset.callState = c.callState;
     setText(state, STRINGS.callState[c.callState] || c.callState);
     setText(queue, c.queue || STRINGS.unknownQueue);
-    setText(ani, c.ani || '—');
-    setText(dnis, c.dnis || '—');
+    queueRow.hidden = c.direction === 'OUTBOUND';
     others.hidden = !snap.others;
     setText(others, snap.others ? STRINGS.otherInteractions(snap.others) : '');
   }

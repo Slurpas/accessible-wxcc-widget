@@ -77,6 +77,14 @@ describe('connectDesktop inside Desktop', () => {
     expect(sdk.Desktop.dialer.removeEventListener).toHaveBeenCalledWith('eOutdialFailed', onFail);
   });
 
+  it("reads only the outdial fields from Desktop's agent profile", async () => {
+    const adapter = await connectDesktop();
+    globalThis.AGENTX_SERVICE.conf = { profile: { outDialEp: 'ep-1', isOutboundEnabledForAgent: true, isOutboundEnabledForTenant: true, agentName: 'Anna' } };
+    expect(adapter.getOutdialSettings()).toEqual({ outDialEp: 'ep-1', isOutboundEnabledForAgent: true, isOutboundEnabledForTenant: true });
+    delete globalThis.AGENTX_SERVICE.conf;
+    expect(adapter.getOutdialSettings()).toEqual({});
+  });
+
   it('reports a missing post-interaction API instead of crashing', async () => {
     const adapter = await connectDesktop();
     expect(() => adapter.fetchPostInteractionTasks({})).toThrow('not available');

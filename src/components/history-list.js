@@ -17,14 +17,12 @@ function kindOf(e, activeIds) {
 const KIND_TEXT = { NOW: () => STRINGS.historyActive, MISSED: () => STRINGS.historyMissed, OUT: () => STRINGS.historyOut, IN: () => STRINGS.historyIn };
 
 export function createHistoryList({ onDial, onCancel = () => {} }) {
-  const note = h('p', { class: 'history-note', text: STRINGS.historyNote });
   const status = h('p', { class: 'history-status', hidden: true });
   const list = h('ul', { class: 'history-list', 'aria-labelledby': 'awx-h-history' });
   const el = h(
     'section',
     { class: 'panel panel-history', 'aria-labelledby': 'awx-h-history' },
     h('div', { class: 'panel-head' }, h('h2', { id: 'awx-h-history', class: 'panel-title', text: STRINGS.recentCalls })),
-    note,
     status,
     list,
   );

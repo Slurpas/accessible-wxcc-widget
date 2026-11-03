@@ -50,8 +50,6 @@ export const STRINGS = {
 
   // Call panel
   noCall: 'No active call',
-  callerNumber: 'Caller number',
-  dialledNumber: 'Dialled number',
   customerNumber: 'Customer number',
   queue: 'Queue',
   callStatus: 'Status',
@@ -93,14 +91,12 @@ export const STRINGS = {
   teamError: (time) =>
     time ? `CONNECTION ERROR. Showing last known list from ${time}.` : 'CONNECTION ERROR. Team list could not be loaded.',
   teamCountsLive: (ready, shown) => `${ready} ready · ${shown} logged in`,
-  teamLive: 'Live: updates as soon as a colleague changes status.',
   teamUpdated: (time, seconds) => `Updates automatically every ${seconds} seconds. Last updated ${time}.`,
   refresh: 'Refresh now',
 
   // Recent calls panel
   recentCalls: 'Recent calls',
   historyEmpty: 'No calls yet in this session.',
-  historyNote: 'Calls from this Desktop session. Cleared when Desktop is reloaded.',
   historyIn: 'IN',
   historyOut: 'OUT',
   historyMissed: 'MISSED',
@@ -112,14 +108,14 @@ export const STRINGS = {
     const m = Math.floor(s / 60);
     return m ? `${m} min ${s % 60} s` : `${s} s`;
   },
-  callBack: 'Call back',
-  callBackLabel: (spoken) => `Call back ${spoken}`,
+  callBack: 'Call',
+  callBackLabel: (spoken) => `Call ${spoken}`,
   confirmDial: (number) => `Call ${number} now?`,
   callNow: 'Call now',
   cancel: 'Cancel',
-  dialBusy: 'Call back is available when you have no active call.',
-  dialNoEntryPoint: 'Call back is not set up yet. An administrator must add the outdial settings to the Desktop layout.',
-  dialAgentOff: 'Call back is not available: outdial is not enabled for you in Webex.',
+  dialBusy: 'You can call a number when you have no active call.',
+  dialNoEntryPoint: 'Calling from this list is not available: Webex did not provide the outdial entry point.',
+  dialAgentOff: 'Calling from this list is not available: outdial is not enabled for you in Webex.',
   dialPending: 'Calling…',
   dialing: (spoken) => `Calling ${spoken}`,
   dialFailed: (reason) => `The call could not be started. ${reason}`,
