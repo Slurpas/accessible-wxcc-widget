@@ -27,6 +27,12 @@
   --awx-break-fg: #000000;
   --awx-admin-bg: #174ea6;
   --awx-admin-fg: #ffffff;
+
+  /* Recent calls: direction chips */
+  --awx-call-in-bg: #00695c;
+  --awx-call-in-fg: #ffffff;
+  --awx-call-out-bg: #6a1b9a;
+  --awx-call-out-fg: #ffffff;
 }
 
 /* High Contrast Dark (default) */

@@ -177,7 +177,7 @@ export class AccessibleWxccWidget extends HTMLElement {
 
     ui.status = createCurrentStatus();
     ui.buttons = createStatusButtons({ onSelect: (def) => this._onSelectState(def) });
-    ui.call = createCurrentCall();
+    ui.call = createCurrentCall({ onEnd: (c) => this._endCall(c), onCancel: () => this._announce(STRINGS.endCallCancelled) });
     ui.history = createHistoryList({ onDial: (e) => this._dial(e), onCancel: () => this._announce(STRINGS.dialCancelled) });
     ui.team = createTeamList({ onRefresh: () => this._services.team && this._services.team.manualRefresh() });
 
@@ -266,6 +266,7 @@ export class AccessibleWxccWidget extends HTMLElement {
     clearTimeout(this._assertiveTimer);
     clearTimeout(this._dialTimer);
     this._dialPending = false;
+    this._endingId = '';
     if (this._adapter) {
       try {
         this._adapter.cleanup();
@@ -393,7 +394,7 @@ export class AccessibleWxccWidget extends HTMLElement {
   _startContacts(adapter) {
     const contacts = new ContactService({ adapter });
     this._services.contacts = contacts;
-    contacts.changes.subscribe((snap) => this._ui.call.update(snap));
+    contacts.changes.subscribe(() => this._renderCall());
     contacts.notices.subscribe((n) => {
       const c = n.call;
       if (n.kind === 'new') {
@@ -409,6 +410,42 @@ export class AccessibleWxccWidget extends HTMLElement {
     this._disposer.add(attachRecorder(contacts));
     contacts.start();
     if (this._props.taskMap) contacts.setTaskMap(this._props.taskMap);
+  }
+
+  _canEndCalls() {
+    try {
+      const d = (this._adapter && this._adapter.getLatestData()) || {};
+      return typeof this._adapter.endCall === 'function' && d.isEndCallEnabled !== false;
+    } catch {
+      return false;
+    }
+  }
+
+  _renderCall() {
+    const contacts = this._services.contacts;
+    if (!contacts) return;
+    const snap = contacts.snapshot();
+    if (this._endingId && !(snap.primary && snap.primary.interactionId === this._endingId && snap.primary.callState === 'CONNECTED')) {
+      this._endingId = ''; // Desktop moved the call on (wrap-up or gone)
+    }
+    this._ui.call.update(snap, { canEnd: this._canEndCalls(), pending: !!this._endingId });
+  }
+
+  /** Called only after the agent pressed END CALL and then "Yes, end call". */
+  async _endCall(call) {
+    const adapter = this._adapter;
+    if (!adapter || this._endingId || !call || !call.interactionId) return;
+    this._endingId = call.interactionId;
+    this._renderCall();
+    try {
+      await adapter.endCall(call.interactionId);
+    } catch (err) {
+      log.warn('End call failed', err);
+      this._announce(STRINGS.endCallFailed(errorReason(err)), true);
+      this._audio.play('failure');
+      this._endingId = '';
+      this._renderCall();
+    }
   }
 
   // ---- Feature: recent calls (optional) ----
@@ -453,8 +490,13 @@ export class AccessibleWxccWidget extends HTMLElement {
     const pick = (k) => (this._props[k] !== undefined && this._props[k] !== null ? this._props[k] : latest[k]);
     const ep = pick('outDialEp');
     const entryPointId = typeof ep === 'string' ? ep : ep && typeof ep === 'object' ? String(ep.id || '') : '';
-    const allowed = !!entryPointId && pick('isOutboundEnabledForAgent') !== false && pick('isOutboundEnabledForTenant') !== false;
-    return { allowed, entryPointId };
+    const off = pick('isOutboundEnabledForAgent') === false || pick('isOutboundEnabledForTenant') === false;
+    const allowed = !!entryPointId && !off;
+    if (!allowed && !this._warnedOutdial) {
+      this._warnedOutdial = true; // for admins (Desktop logs); values are not logged
+      log.warn(off ? 'Call back hidden: outdial is disabled for this agent or tenant' : 'Call back hidden: no outdial entry point. Bind $STORE.agent.outDialEp in the Desktop layout');
+    }
+    return { allowed, entryPointId, reason: allowed ? '' : off ? 'off' : 'noEntryPoint' };
   }
 
   _renderHistory() {
@@ -462,7 +504,7 @@ export class AccessibleWxccWidget extends HTMLElement {
     const contacts = this._services.contacts;
     const activeIds = new Set(contacts ? contacts.calls.keys() : []);
     const connected = this._connection === 'connected' || this._connection === 'mock';
-    const { allowed } = this._outdial();
+    const { allowed, reason } = this._outdial();
     const busy = activeIds.size > 0 || !!this._dialPending;
     this._ui.history.update({
       entries: sessionHistory.list(),
@@ -470,6 +512,7 @@ export class AccessibleWxccWidget extends HTMLElement {
       dialAllowed: allowed,
       canDial: allowed && connected && !busy,
       blockedMsg: this._dialPending ? STRINGS.dialPending : STRINGS.dialBusy,
+      unavailableMsg: reason === 'off' ? STRINGS.dialAgentOff : reason ? STRINGS.dialNoEntryPoint : '',
     });
   }
 

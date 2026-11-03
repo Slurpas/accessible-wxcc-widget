@@ -33,7 +33,7 @@ export function contrast(a, b) {
   return (x + 0.05) / (y + 0.05);
 }
 
-const chipPairs = ['ready', 'notready', 'busy', 'wrapup', 'offline', 'unknown', 'error', 'lunch', 'break', 'admin'];
+const chipPairs = ['ready', 'notready', 'busy', 'wrapup', 'offline', 'unknown', 'error', 'lunch', 'break', 'admin', 'call-in', 'call-out'];
 
 for (const [name, t] of [['dark', dark], ['light', light]]) {
   describe(`${name} theme`, () => {

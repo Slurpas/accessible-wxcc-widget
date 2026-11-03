@@ -124,6 +124,11 @@ export function createDesktopAdapter(Desktop) {
       return Desktop.actions.getTaskMap();
     },
 
+    /** Documented: Desktop.agentContact.end({interactionId}). Same as Desktop's own End button. */
+    endCall(interactionId) {
+      return Desktop.agentContact.end({ interactionId });
+    },
+
     /**
      * Documented: Desktop.dialer.startOutdial({data:{entryPointId, destination,
      * direction, attributes, mediaType, outboundType}}). Desktop checks the

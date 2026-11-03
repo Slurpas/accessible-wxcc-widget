@@ -9,7 +9,7 @@ npm run check     # tests + production build + bundle verification
 
 ### Results: 3 Nov 2026, Node 24.13, Vitest 5.1, jsdom 30.1
 
-**13 test files, 170 tests, all passed.**
+**13 test files, 178 tests, all passed.**
 
 | File | Tests | Covers |
 |---|---|---|
@@ -18,13 +18,13 @@ npm run check     # tests + production build + bundle verification
 | `agent-state.test.js` | 18 | Loading → error timeout, STORE map, OFFLINE, external changes, other channel/agent ignored, stale updates ignored, exact `stateChangeV2` payloads, **requested state not shown before confirmation**, rejection, `undefined` response, unconfirmed timeout, no agentId, double-click guard, listener cleanup |
 | `contact-events.test.js` | 17 | ANI/DNIS/queue extraction, outdial customer number, CAD fallback, hold, full lifecycle offer → connected → ANI update → hold → wrap-up → cleared, RONA, restore from task map (incl. Map-like observable; unknown shapes never blank the panel), multiple interactions, memory cleared on stop |
 | `team-dashboard.test.js` | 10 | Team filter, self excluded, unfiltered case (logged, not shown), Available + Idle requests, no request without a UUID profile, **failure keeps last list and never marks OFFLINE**, failure response type, refresh limits (default 30 s, min 15 s), refresh on return to the tab, stale flag, timer cleanup |
-| `widget.test.js` | 27 | Whole Web Component with the mock adapter: rendering, headings in reading order (status, call, buttons, recent calls, team), **recent calls** (newest first, MISSED, kept across remount, call back asks first and sends the documented outdial payload, Cancel/Escape, disabled during a call, hidden without outdial, failure announced, panel off, recorder mode shows nothing), dense grid for many idle codes, "updates automatically" text, aria-pressed, pending → confirmed + live announcement, **focus not stolen**, failure announced assertively, disabled without agentId, external change, call lifecycle and spoken number, team filter/counts, team off by attribute, **team failure does not affect status buttons**, offline → "STATUS NOT VERIFIED", theme/text-size preferences (only prefs stored), unmount cleanup + remount, properties set before upgrade |
+| `widget.test.js` | 31 | Whole Web Component with the mock adapter: rendering, headings in reading order (status, call, buttons, recent calls, team), **recent calls** (newest first, MISSED, kept across remount, call back asks first and sends the documented outdial payload, Cancel/Escape, disabled during a call, hidden without outdial with the reason shown, no queue/entry point shown, failure announced, panel off, recorder mode shows nothing), **END CALL** (only while connected, asks first, Escape returns focus, ends through Desktop, failure announced, hidden when the profile forbids it), dense grid for many idle codes, "updates automatically" text, aria-pressed, pending → confirmed + live announcement, **focus not stolen**, failure announced assertively, disabled without agentId, external change, call lifecycle and spoken number, team filter/counts, team off by attribute, **team failure does not affect status buttons**, offline → "STATUS NOT VERIFIED", theme/text-size preferences (only prefs stored), unmount cleanup + remount, properties set before upgrade |
 | `team-realtime.test.js` | 8 | Live team list: own team, self excluded, exact state and reason (name or idle-code id), delete/log-out removes, other channels ignored, BUSY/WRAP-UP from the contact feed, unknown states kept visible, malformed updates ignored; fallback to the buddy list on error, refusal or silence; subscriptions closed on stop |
 | `call-history.test.js` | 8 | Session history: one entry per call, talk time, missed, max entries, telephony only, no duplicate entries from two recorders, page switch does not end live calls |
 | `desktop-sdk.test.js` | 4 | Real adapter with a fake SDK: unmount + remount keeps `stateChangeV2` working, `Desktop.config.cleanup()` never called, only own listeners removed, outdial payload passed through, missing post-interaction API reported |
 | `team-probe.test.js` | 12 | Read-only team probe: buddy counts, real-time dataset results and data shapes, post-interaction history check; **no names, e-mail, numbers, IDs or tokens in the report**; every subscription closed; no state change; works without Desktop |
 | `outside-desktop.test.js` | 3 | Real adapter: outside Desktop shows a diagnostic, buttons disabled, mock **not** used even with `mock="true"` |
-| `contrast.test.js` | 26 | WCAG contrast of every colour pair in both themes: chips ≥ 4.5:1, body text ≥ 7:1, borders/focus ≥ 3:1 |
+| `contrast.test.js` | 30 | WCAG contrast of every colour pair in both themes: chips ≥ 4.5:1, body text ≥ 7:1, borders/focus ≥ 3:1 |
 | `security.test.js` | 7 | No secrets, no direct network calls, no token access, storage only for prefs, no innerHTML/eval, no third-party URLs, logger strips payloads |
 
 Bundle verification (`scripts/verify-bundle.mjs`) passed: 350 KiB, no mock/demo code, no
@@ -66,6 +66,7 @@ Record results in the table (Pass/Fail + notes). Never put real customer numbers
 | T17 | Widget reload safety | Upload a new bundle version to the same URL, reload Desktop | New version loads (check `build-info.json`), nothing breaks. | |
 | T18 | Recent calls | Take an inbound call, let one ring out, make an outdial; switch pages in between | All three listed, newest first, as IN / MISSED / OUT; still listed after switching pages. | |
 | T19 | Call back | Press "Call back" on a test number, then "Call now"; also try Cancel and Escape | Outdial starts only after "Call now"; the call panel shows OUTBOUND. Cancel/Escape dial nothing. Button disabled during a call. | |
+| T20 | End call | During a connected test call press END CALL, then Escape; press again and "Yes, end call" | Escape keeps the call. "Yes, end call" ends it, panel shows WRAP-UP; Desktop's own panel agrees. | |
 
 If T1 fails with "STATUS NOT VERIFIED" after ~6 s, check that the layout binds
 `$STORE.agent.channelsStatesMap` (desktop-layout/README.md) and that the tenant uses

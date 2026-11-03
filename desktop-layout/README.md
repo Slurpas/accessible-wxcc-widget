@@ -39,10 +39,10 @@ Rollback: assign the team back to the original layout.
 | `taskMap` | `$STORE.agentContact.taskMap` | Restores the call panel if the page opens during a call. |
 | `isOutboundEnabledForAgent` | `$STORE.agent.isOutboundEnabledForAgent` | "Call back" is hidden when outdial is off for the agent. |
 | `isOutboundEnabledForTenant` | `$STORE.agent.isOutboundEnabledForTenant` | Same, for the tenant. |
-| `outDialEp` | `$STORE.agent.outDialEp` | Outdial entry point used by "Call back". Without it "Call back" is hidden. |
+| `outDialEp` | `$STORE.agent.outDialEp` | Outdial entry point used by "Call back". **Required for Call back**: the SDK does not provide it any other way. Without it the panel says "Call back is not set up yet". |
 
-The three outdial bindings are optional: the widget falls back to the same values
-in the SDK's agent data.
+`isOutboundEnabledForAgent` / `isOutboundEnabledForTenant` fall back to the SDK's
+agent data when not bound.
 
 | Attribute | Values | Default |
 |---|---|---|
@@ -56,7 +56,8 @@ in the SDK's agent data.
 ## Recent calls
 
 The "Recent calls" panel lists the agent's calls in this Desktop session (up to
-25, newest first): number, IN / OUT / MISSED, time, talk time and queue. It is
+25, newest first): a large number, IN (teal) / OUT (purple) / MISSED (red) /
+NOW (green), time and talk time. Queue and entry point names are not shown. It is
 kept in memory only. It is not saved in the browser and is gone when Desktop is
 reloaded or the agent signs out.
 
@@ -68,6 +69,14 @@ Desktop applies the same rules as its own dial pad.
 The visible widget only sees calls while its page is open. The optional
 `headless` block runs a hidden copy (`mode="recorder"`) that records calls while
 the agent is on other Desktop pages. It shows nothing and changes nothing.
+
+## End call
+
+"END CALL" appears in "My current call" while a call is connected. It needs a
+second "Yes, end call" press (Escape or Cancel backs out) and then ends the call
+with `Desktop.agentContact.end`, the same as Desktop's own End button. It is
+hidden when the desktop profile does not allow agents to end calls
+(`isEndCallEnabled` false), while ringing, on hold and in wrap-up.
 
 ## Placement notes
 

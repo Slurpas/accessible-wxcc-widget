@@ -465,6 +465,44 @@
   border: 3px dashed var(--awx-warn-bg);
 }
 
+/* ---------- End call ---------- */
+.call-actions {
+  margin: 0.2em 0 0.6em;
+}
+.call-end-btn {
+  width: 100%;
+  min-height: 64px;
+  padding: 0.3em 1em;
+  font: inherit;
+  font-size: 1.3em;
+  font-weight: 900;
+  background: var(--awx-notready-bg);
+  color: var(--awx-notready-fg);
+  border: 3px solid var(--awx-current-ring);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.call-end-btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.call-end-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5em;
+}
+.call-end-question {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 1.2em;
+  font-weight: 900;
+}
+.call-end-yes {
+  width: auto;
+  flex: 1 1 auto;
+}
+
 /* ---------- Recent calls ---------- */
 .history-note {
   margin: 0 0 0.4em;
@@ -515,10 +553,13 @@
   color: var(--awx-btn-fg);
   border: 2px solid var(--awx-border);
 }
-.history-kind[data-kind='MISSED'] { background: var(--awx-error-msg-bg); color: var(--awx-error-msg-fg); border-color: var(--awx-error-msg-bg); }
+.history-kind[data-kind='IN'] { background: var(--awx-call-in-bg); color: var(--awx-call-in-fg); border-color: var(--awx-call-in-bg); }
+.history-kind[data-kind='OUT'] { background: var(--awx-call-out-bg); color: var(--awx-call-out-fg); border-color: var(--awx-call-out-bg); }
+.history-kind[data-kind='MISSED'] { background: var(--awx-notready-bg); color: var(--awx-notready-fg); border-color: var(--awx-notready-bg); }
 .history-kind[data-kind='NOW'] { background: var(--awx-ready-bg); color: var(--awx-ready-fg); border-color: var(--awx-ready-bg); }
 .history-number {
-  font-size: 1.2em;
+  font-size: 1.6em;
+  line-height: 1.15;
   font-weight: 900;
   overflow-wrap: anywhere;
 }

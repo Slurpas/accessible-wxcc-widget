@@ -1,5 +1,7 @@
 /**
- * "MY CURRENT CALL" panel: large customer number, direction, queue, status.
+ * "MY CURRENT CALL" panel: large customer number, direction, queue, status,
+ * and an END CALL button. Ending always needs a second, explicit
+ * "Yes, end call" press; Escape or Cancel backs out.
  */
 import { h, setText } from './dom.js';
 import { STRINGS } from '../i18n/strings.js';
@@ -16,7 +18,7 @@ export function spokenNumber(n) {
   return (s.startsWith('+') ? 'plus ' : '') + groups.join(', ');
 }
 
-export function createCurrentCall() {
+export function createCurrentCall({ onEnd = () => {}, onCancel = () => {} } = {}) {
   const empty = h('p', { class: 'call-empty', text: STRINGS.noCall });
   const number = h('p', { class: 'call-number' });
   const dir = h('span', { class: 'badge badge-dir' });
@@ -27,12 +29,57 @@ export function createCurrentCall() {
   const others = h('p', { class: 'call-others', hidden: true });
   const error = h('p', { class: 'call-error', hidden: true, text: STRINGS.callInfoUnavailable });
 
+  const endBtn = h('button', { type: 'button', class: 'call-end-btn', text: STRINGS.endCall });
+  const endYes = h('button', { type: 'button', class: 'call-end-btn call-end-yes', text: STRINGS.endCallYes });
+  const endNo = h('button', { type: 'button', class: 'small-btn call-end-no', text: STRINGS.cancel });
+  const endConfirm = h(
+    'div',
+    { class: 'call-end-confirm', role: 'group', 'aria-label': STRINGS.endCallQuestion, hidden: true },
+    h('p', { class: 'call-end-question', 'aria-hidden': 'true', text: STRINGS.endCallQuestion }),
+    endYes,
+    endNo,
+  );
+  const endNote = h('p', { class: 'call-end-note', hidden: true });
+  const actions = h('div', { class: 'call-actions', hidden: true }, endBtn, endConfirm, endNote);
+  let current = null; // call shown now
+  let confirming = false;
+  let endable = false;
+
+  function showConfirm(on) {
+    confirming = on && endable;
+    endBtn.hidden = confirming;
+    endConfirm.hidden = !confirming;
+  }
+  function cancel() {
+    showConfirm(false);
+    endBtn.focus();
+    onCancel();
+  }
+  endBtn.addEventListener('click', () => {
+    showConfirm(true);
+    endYes.focus();
+  });
+  endYes.addEventListener('click', () => {
+    const call = current;
+    showConfirm(false);
+    if (call) onEnd(call);
+  });
+  endNo.addEventListener('click', cancel);
+  endConfirm.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape') {
+      ev.preventDefault();
+      ev.stopPropagation();
+      cancel();
+    }
+  });
+
   const active = h(
     'div',
     { class: 'call-active', hidden: true },
     h('p', { class: 'call-number-label', text: STRINGS.customerNumber }),
     number,
     h('p', { class: 'call-badges' }, dir, state),
+    actions,
     h(
       'dl',
       { class: 'call-details' },
@@ -52,11 +99,25 @@ export function createCurrentCall() {
     error,
   );
 
-  function update(snap) {
+  /**
+   * @param {object} snap ContactService snapshot
+   * @param {{canEnd?:boolean, pending?:boolean}} [opts] canEnd: the profile allows ending calls
+   */
+  function update(snap, opts = {}) {
     const c = snap && snap.primary;
     error.hidden = !(snap && snap.error);
     empty.hidden = !!c;
     active.hidden = !c;
+    const sameCall = c && current && c.interactionId === current.interactionId;
+    current = c || null;
+    if (!sameCall) confirming = false;
+    endable = !!c && !!opts.canEnd && c.callState === 'CONNECTED' && (c.mediaType === 'telephony' || !c.mediaType);
+    const wasFocused = endConfirm.contains(endConfirm.getRootNode().activeElement);
+    actions.hidden = !c || !opts.canEnd || !(endable || opts.pending);
+    endBtn.disabled = !!opts.pending;
+    setText(endBtn, opts.pending ? STRINGS.endCallPending : STRINGS.endCall);
+    showConfirm(confirming && !opts.pending);
+    if (wasFocused && !confirming && !endBtn.hidden) endBtn.focus();
     if (!c) return;
     const shown = c.customerNumber || STRINGS.unknownNumber;
     setText(number, shown);

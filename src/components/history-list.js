@@ -29,7 +29,7 @@ export function createHistoryList({ onDial, onCancel = () => {} }) {
     list,
   );
 
-  let view = { entries: [], activeIds: new Set(), canDial: false, dialAllowed: false, blockedMsg: '' };
+  let view = { entries: [], activeIds: new Set(), canDial: false, dialAllowed: false, blockedMsg: '', unavailableMsg: '' };
   let confirmId = '';
 
   function focusKey(key) {
@@ -52,10 +52,10 @@ export function createHistoryList({ onDial, onCancel = () => {} }) {
     const dur = e.endedAt && e.connectedAt ? STRINGS.duration(e.endedAt - e.connectedAt) : '';
     const info = h(
       'div',
-      { class: 'history-info', role: 'group', 'aria-label': STRINGS.historyRowLabel(STRINGS.historyDirection[kind], spoken, time, dur, e.queue) },
+      { class: 'history-info', role: 'group', 'aria-label': STRINGS.historyRowLabel(STRINGS.historyDirection[kind], spoken, time, dur) },
       h('span', { class: 'history-kind', 'data-kind': kind, 'aria-hidden': 'true', text: KIND_TEXT[kind]() }),
       h('span', { class: 'history-number', 'aria-hidden': 'true', text: shown }),
-      h('span', { class: 'history-meta', 'aria-hidden': 'true', text: [time, dur, e.queue].filter(Boolean).join(' · ') }),
+      h('span', { class: 'history-meta', 'aria-hidden': 'true', text: [time, dur].filter(Boolean).join(' · ') }),
     );
 
     let action = null;
@@ -108,7 +108,9 @@ export function createHistoryList({ onDial, onCancel = () => {} }) {
     const key = active && list.contains(active) ? active.dataset.focus : '';
 
     if (!view.canDial) confirmId = '';
-    const msg = view.entries.length && view.dialAllowed && !view.canDial ? view.blockedMsg : '';
+    let msg = '';
+    if (view.entries.length && !view.dialAllowed) msg = view.unavailableMsg || '';
+    else if (view.entries.length && !view.canDial) msg = view.blockedMsg;
     status.hidden = !msg;
     setText(status, msg);
     list.replaceChildren(...(view.entries.length ? view.entries.map(row) : [h('li', { class: 'history-empty', text: STRINGS.historyEmpty })]));

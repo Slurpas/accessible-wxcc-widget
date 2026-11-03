@@ -76,6 +76,12 @@ export const STRINGS = {
   callAnnounceState: (state) => `Call status ${state}`,
   callAnnounceEnded: 'Call ended',
   callInfoUnavailable: 'Call information is not available right now.',
+  endCall: 'END CALL',
+  endCallQuestion: 'End this call?',
+  endCallYes: 'Yes, end call',
+  endCallPending: 'Ending call…',
+  endCallCancelled: 'Call not ended',
+  endCallFailed: (reason) => `The call could not be ended. ${reason}`,
 
   // Team panel
   teamDisabled: 'The team list is turned off in this layout.',
@@ -100,8 +106,7 @@ export const STRINGS = {
   historyMissed: 'MISSED',
   historyActive: 'NOW',
   historyDirection: { IN: 'Incoming call', OUT: 'Outgoing call', MISSED: 'Missed call', NOW: 'Call in progress' },
-  historyRowLabel: (kind, spoken, time, duration, queue) =>
-    `${kind}, ${spoken}, at ${time}${duration ? `, ${duration}` : ''}${queue ? `, queue ${queue}` : ''}`,
+  historyRowLabel: (kind, spoken, time, duration) => `${kind}, ${spoken}, at ${time}${duration ? `, ${duration}` : ''}`,
   duration: (ms) => {
     const s = Math.max(0, Math.round(ms / 1000));
     const m = Math.floor(s / 60);
@@ -113,6 +118,8 @@ export const STRINGS = {
   callNow: 'Call now',
   cancel: 'Cancel',
   dialBusy: 'Call back is available when you have no active call.',
+  dialNoEntryPoint: 'Call back is not set up yet. An administrator must add the outdial settings to the Desktop layout.',
+  dialAgentOff: 'Call back is not available: outdial is not enabled for you in Webex.',
   dialPending: 'Calling…',
   dialing: (spoken) => `Calling ${spoken}`,
   dialFailed: (reason) => `The call could not be started. ${reason}`,

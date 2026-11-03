@@ -357,6 +357,68 @@ describe('<accessible-wxcc-widget>', () => {
     expect(sessionHistory.list()).toHaveLength(1);
   });
 
+  it('END CALL asks first, then ends the call through Desktop', async () => {
+    const end = vi.spyOn(currentAdapter, 'endCall');
+    await mount({}, { agentId: currentAdapter.agentId });
+    currentAdapter.controls.incomingCall({ ani: '+46 46 123 456' });
+    await wait();
+    expect(q('.call-actions').hidden).toBe(true); // ringing: nothing to end yet
+    currentAdapter.controls.answer();
+    await wait();
+    expect(q('.call-actions').hidden).toBe(false);
+    q('.call-end-btn').click();
+    expect(end).not.toHaveBeenCalled();
+    expect(q('.call-end-confirm').hidden).toBe(false);
+    expect(el.shadowRoot.activeElement).toBe(q('.call-end-yes'));
+    q('.call-end-confirm').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(q('.call-end-confirm').hidden).toBe(true);
+    expect(el.shadowRoot.activeElement).toBe(q('.call-end-btn'));
+    q('.call-end-btn').click();
+    q('.call-end-yes').click();
+    expect(end).toHaveBeenCalledWith(expect.stringMatching(/^mock-call-/));
+    await wait(60);
+    expect(q('.badge-state').textContent).toBe('WRAP-UP');
+    expect(q('.call-actions').hidden).toBe(true);
+  });
+
+  it('announces a failed END CALL assertively and keeps the button', async () => {
+    await mount({}, { agentId: currentAdapter.agentId });
+    currentAdapter.controls.incomingCall();
+    currentAdapter.controls.answer();
+    await wait();
+    currentAdapter.controls.failNextEndCall();
+    q('.call-end-btn').click();
+    q('.call-end-yes').click();
+    await wait(120);
+    expect(q('[role="alert"]').textContent).toContain('The call could not be ended');
+    expect(q('.badge-state').textContent).toBe('CONNECTED');
+    expect(q('.call-end-btn').disabled).toBe(false);
+  });
+
+  it('hides END CALL when the desktop profile does not allow ending calls', async () => {
+    const latest = currentAdapter.getLatestData;
+    currentAdapter.getLatestData = () => ({ ...latest(), isEndCallEnabled: false });
+    await mount({}, { agentId: currentAdapter.agentId });
+    currentAdapter.controls.incomingCall();
+    currentAdapter.controls.answer();
+    await wait();
+    expect(q('.call-actions').hidden).toBe(true);
+  });
+
+  it('recent calls: no queue or entry point shown, and says why call back is missing', async () => {
+    const latest = currentAdapter.getLatestData;
+    currentAdapter.getLatestData = () => ({ ...latest(), outDialEp: undefined });
+    await mount({}, { agentId: currentAdapter.agentId });
+    await finishedCall();
+    expect(q('.history-meta').textContent).not.toContain('Technical Support');
+    expect(q('.history-info').getAttribute('aria-label')).not.toContain('queue');
+    expect(q('.history-back')).toBeNull();
+    expect(q('.history-status').textContent).toContain('outdial settings to the Desktop layout');
+    el.outDialEp = '00000000-0000-4000-8000-0000000000e1';
+    expect(q('.history-back')).not.toBeNull();
+    expect(q('.history-status').hidden).toBe(true);
+  });
+
   it('accepts properties assigned before the element is upgraded', async () => {
     const pre = document.createElement('div');
     pre.innerHTML = '<accessible-wxcc-widget></accessible-wxcc-widget>';

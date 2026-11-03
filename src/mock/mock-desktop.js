@@ -57,6 +57,7 @@ export function createMockAdapter({ latencyMs = 400, manyCodes = false, realtime
   const tasks = new Map();
   let failNext = false;
   let failNextDial = false;
+  let failNextEnd = false;
   let offline = false;
   let callSeq = 0;
   // Real-time team data (shape of wxcc.rtd.agentchanneltypestatus / agentchannelstatus).
@@ -222,6 +223,17 @@ export function createMockAdapter({ latencyMs = 400, manyCodes = false, realtime
       return { data: { interactionId: id } };
     },
 
+    async endCall(interactionId) {
+      await wait();
+      if (offline) throw new Error('Mock: network unavailable');
+      if (failNextEnd) {
+        failNextEnd = false;
+        throw new Error('Mock: end call rejected');
+      }
+      adapter.controls.endCall(interactionId);
+      return { data: { interactionId } };
+    },
+
     async fetchPostInteractionTasks() {
       await wait();
       throw new Error('Mock: no post-interaction data');
@@ -308,6 +320,9 @@ export function createMockAdapter({ latencyMs = 400, manyCodes = false, realtime
           { key: `${agentId}:c`, operation: contactStatus ? 'UPDATE' : 'DELETE', data: { agentId, channelType: 'telephony', interactionId: 'mock-int', contactStatus } },
         ]);
         rtPush('wxcc.rtd.agentchanneltypestatus', [rtItem(a)]);
+      },
+      failNextEndCall() {
+        failNextEnd = true;
       },
       failNextOutdial() {
         failNextDial = true;

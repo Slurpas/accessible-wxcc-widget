@@ -19,6 +19,7 @@ OAuth client and needs no admin role.
 | `Desktop.rtdwc.subscribe({datasetName, update, error})` for `wxcc.rtd.agentchanneltypestatus` and `wxcc.rtd.agentchannelstatus` | Live team list: every logged-in colleague, exact state, Not Ready reason, on a call / wrap-up | Desktop's real-time channel in the agent's session (undocumented for widgets) | Falls back to `buddyAgentsV2` polling (below) |
 | `Desktop.agentContact.buddyAgentsV2({data:{agentProfileId, mediaType:"telephony", channelName:"telephony", state}})` ×2 (Available, Idle) | Team list fallback | Same list Desktop shows for consult/transfer | Team panel shows CONNECTION ERROR; other features unaffected |
 | `Desktop.dialer.startOutdial({data:{entryPointId, destination, direction:"OUTBOUND", attributes:{}, mediaType:"telephony", outboundType:"OUTDIAL"}})` | "Call back" in Recent calls, only after the agent confirms | Same as Desktop's own outdial (agent's outdial entry point) | Assertive announcement; button available again |
+| `Desktop.agentContact.end({interactionId})` | "END CALL" in My current call, only after the agent confirms | Same as Desktop's own End button (desktop profile `isEndCallEnabled`) | Assertive announcement; call and button unchanged |
 | `Desktop.dialer` event `eOutdialFailed` | Report a failed call back | Own events | — |
 | `Desktop.logger.createLogger(...)` | Write to Desktop's log collection | — | Falls back to console |
 
