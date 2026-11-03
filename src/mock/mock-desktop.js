@@ -49,11 +49,14 @@ const TEAM = [
   { agentId: 'm-9', agentName: 'Other Team Agent (mock)', teamId: 'mock-team-2', state: 'Available' },
 ];
 
+const MOCK_OUTDIAL_EP = '00000000-0000-4000-8000-0000000000e1';
+
 export function createMockAdapter({ latencyMs = 400, manyCodes = false } = {}) {
   const idleCodes = manyCodes ? MANY_IDLE_CODES : IDLE_CODES;
   const listeners = new Map(); // eventName -> Set
   const tasks = new Map();
   let failNext = false;
+  let failNextDial = false;
   let offline = false;
   let callSeq = 0;
   let channel = {
@@ -124,6 +127,9 @@ export function createMockAdapter({ latencyMs = 400, manyCodes = false } = {}) {
         teamName: 'Demo Team',
         idleCodes: idleCodes,
         channelsStatesMap: { telephony: { ...channel, stateChangeTimestamp: Math.floor(channel.stateChangeTimestamp / 1000) } },
+        isOutboundEnabledForAgent: true,
+        isOutboundEnabledForTenant: true,
+        outDialEp: MOCK_OUTDIAL_EP,
       };
     },
 
@@ -166,8 +172,28 @@ export function createMockAdapter({ latencyMs = 400, manyCodes = false } = {}) {
       return m;
     },
 
+    /** Mock outdial: never reaches Webex, just starts a fake outbound call. */
+    async startOutdial({ destination, entryPointId }) {
+      await wait();
+      if (offline) throw new Error('Mock: network unavailable');
+      if (failNextDial) {
+        failNextDial = false;
+        emit('eOutdialFailed', { data: { reason: 'Mock: number not reachable' } });
+        throw new Error('Mock: outdial failed');
+      }
+      if (entryPointId !== MOCK_OUTDIAL_EP) throw new Error('Mock: unknown entry point');
+      const id = adapter.controls.outboundCall({ dnis: destination });
+      return { data: { interactionId: id } };
+    },
+
+    async fetchPostInteractionTasks() {
+      await wait();
+      throw new Error('Mock: no post-interaction data');
+    },
+
     onAgentStateEvent: on,
     onContactEvent: on,
+    onDialerEvent: on,
 
     cleanup() {
       listeners.clear();
@@ -225,6 +251,9 @@ export function createMockAdapter({ latencyMs = 400, manyCodes = false } = {}) {
       },
       failNextStateChange() {
         failNext = true;
+      },
+      failNextOutdial() {
+        failNextDial = true;
       },
       setOffline(v) {
         offline = !!v;

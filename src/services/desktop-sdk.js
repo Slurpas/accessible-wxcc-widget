@@ -124,6 +124,31 @@ export function createDesktopAdapter(Desktop) {
       return Desktop.actions.getTaskMap();
     },
 
+    /**
+     * Documented: Desktop.dialer.startOutdial({data:{entryPointId, destination,
+     * direction, attributes, mediaType, outboundType}}). Desktop checks the
+     * agent's own outdial permission; the widget never dials without a confirm.
+     */
+    startOutdial(data) {
+      return Desktop.dialer.startOutdial({ data });
+    },
+
+    /** Dialer events, for example eOutdialFailed. */
+    onDialerEvent(eventName, handler) {
+      return subscribe(Desktop.dialer, eventName, handler);
+    },
+
+    /**
+     * Not documented for widgets (used by Desktop's own post-interaction
+     * views). Only the read-only probe calls it, to learn whether a history
+     * can be loaded from Webex.
+     */
+    fetchPostInteractionTasks(payload) {
+      const api = Desktop.postInteractions;
+      if (!api || typeof api.fetchTasks !== 'function') throw new Error('postInteractions.fetchTasks not available');
+      return api.fetchTasks(payload);
+    },
+
     onAgentStateEvent(eventName, handler) {
       return subscribe(Desktop.agentStateInfo, eventName, handler);
     },

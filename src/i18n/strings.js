@@ -72,6 +72,7 @@ export const STRINGS = {
     UNKNOWN: 'IN PROGRESS',
   },
   callAnnounceNew: (number, queue) => `Incoming call from ${number}${queue ? `, queue ${queue}` : ''}`,
+  callAnnounceOutbound: (number) => `Outgoing call to ${number}`,
   callAnnounceState: (state) => `Call status ${state}`,
   callAnnounceEnded: 'Call ended',
   callInfoUnavailable: 'Call information is not available right now.',
@@ -87,6 +88,33 @@ export const STRINGS = {
     time ? `CONNECTION ERROR. Showing last known list from ${time}.` : 'CONNECTION ERROR. Team list could not be loaded.',
   teamUpdated: (time, seconds) => `Updates automatically every ${seconds} seconds. Last updated ${time}.`,
   refresh: 'Refresh now',
+
+  // Recent calls panel
+  recentCalls: 'Recent calls',
+  historyEmpty: 'No calls yet in this session.',
+  historyNote: 'Calls from this Desktop session. Cleared when Desktop is reloaded.',
+  historyIn: 'IN',
+  historyOut: 'OUT',
+  historyMissed: 'MISSED',
+  historyActive: 'NOW',
+  historyDirection: { IN: 'Incoming call', OUT: 'Outgoing call', MISSED: 'Missed call', NOW: 'Call in progress' },
+  historyRowLabel: (kind, spoken, time, duration, queue) =>
+    `${kind}, ${spoken}, at ${time}${duration ? `, ${duration}` : ''}${queue ? `, queue ${queue}` : ''}`,
+  duration: (ms) => {
+    const s = Math.max(0, Math.round(ms / 1000));
+    const m = Math.floor(s / 60);
+    return m ? `${m} min ${s % 60} s` : `${s} s`;
+  },
+  callBack: 'Call back',
+  callBackLabel: (spoken) => `Call back ${spoken}`,
+  confirmDial: (number) => `Call ${number} now?`,
+  callNow: 'Call now',
+  cancel: 'Cancel',
+  dialBusy: 'Call back is available when you have no active call.',
+  dialPending: 'Calling…',
+  dialing: (spoken) => `Calling ${spoken}`,
+  dialFailed: (reason) => `The call could not be started. ${reason}`,
+  dialCancelled: 'Call cancelled',
 
   // Settings
   themeDark: 'Dark theme',

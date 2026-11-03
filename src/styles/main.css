@@ -465,6 +465,102 @@
   border: 3px dashed var(--awx-warn-bg);
 }
 
+/* ---------- Recent calls ---------- */
+.history-note {
+  margin: 0 0 0.4em;
+  color: var(--awx-text-muted);
+  font-weight: 700;
+  font-size: 0.85em;
+}
+.history-status {
+  margin: 0 0 0.4em;
+  padding: 0.3em 0.6em;
+  border-radius: 8px;
+  font-weight: 700;
+  background: var(--awx-warn-bg);
+  color: var(--awx-warn-fg);
+}
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35em;
+}
+.history-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.3em 0.5em;
+  border: 2px solid var(--awx-border);
+  border-radius: 10px;
+}
+.history-info {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 0.5em;
+  align-items: baseline;
+}
+.history-kind {
+  grid-row: span 2;
+  align-self: center;
+  min-width: 4.2em;
+  padding: 0.15em 0.4em;
+  border-radius: 6px;
+  text-align: center;
+  font-weight: 900;
+  font-size: 0.85em;
+  background: var(--awx-btn-bg);
+  color: var(--awx-btn-fg);
+  border: 2px solid var(--awx-border);
+}
+.history-kind[data-kind='MISSED'] { background: var(--awx-error-msg-bg); color: var(--awx-error-msg-fg); border-color: var(--awx-error-msg-bg); }
+.history-kind[data-kind='NOW'] { background: var(--awx-ready-bg); color: var(--awx-ready-fg); border-color: var(--awx-ready-bg); }
+.history-number {
+  font-size: 1.2em;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+.history-meta {
+  font-size: 0.85em;
+  font-weight: 700;
+  color: var(--awx-text-muted);
+  overflow-wrap: anywhere;
+}
+.history-back:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.history-confirm {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5em;
+}
+.history-question {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 1.1em;
+  font-weight: 900;
+}
+.history-call-now {
+  min-height: 56px;
+  padding: 0.3em 1em;
+  font: inherit;
+  font-size: 1.1em;
+  font-weight: 900;
+  background: var(--awx-ready-bg);
+  color: var(--awx-ready-fg);
+  border: 3px solid var(--awx-current-ring);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.history-empty {
+  font-weight: 700;
+}
+
 /* ---------- Responsive ---------- */
 @container awx (max-width: 359px) {
   .awx-root {
@@ -499,12 +595,14 @@
     grid-template-areas:
       'status buttons'
       'call buttons'
+      'history buttons'
       'team buttons';
     align-items: start;
   }
   .panel-status { grid-area: status; }
   .panel-call { grid-area: call; }
   .panel-team { grid-area: team; max-height: 100%; overflow: auto; }
+  .panel-history { grid-area: history; max-height: 18em; overflow: auto; }
   .panel-buttons {
     grid-area: buttons;
     align-self: stretch;
@@ -514,7 +612,7 @@
   /* Keep the team readable when the call panel is tall; if the page is too
      short for both, the whole widget scrolls rather than hiding the call. */
   .awx-main {
-    grid-template-rows: auto auto minmax(10em, 1fr);
+    grid-template-rows: auto auto auto minmax(10em, 1fr);
   }
 }
 
@@ -522,10 +620,11 @@
 @container awx (min-width: 1150px) {
   .awx-main {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 0.9fr);
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
     grid-template-areas:
       'status buttons team'
-      'call buttons team';
+      'call buttons team'
+      'history buttons team';
   }
   .panel-team {
     align-self: stretch;
@@ -533,6 +632,10 @@
   .panel-call {
     max-height: 100%;
     overflow: auto;
+  }
+  .panel-history {
+    max-height: 100%;
+    align-self: stretch;
   }
 }
 

@@ -38,7 +38,7 @@ export class AgentStateService {
    * @param {(fn:Function, ms:number)=>any} [opts.setTimer]
    * @param {(id:any)=>void} [opts.clearTimer]
    */
-  constructor({ adapter, channel = 'telephony', setTimer = setTimeout, clearTimer = clearTimeout }) {
+  constructor({ adapter, channel = 'telephony', setTimer = (fn, ms) => setTimeout(fn, ms), clearTimer = (id) => clearTimeout(id) }) {
     this.adapter = adapter;
     this.channel = channel;
     this.setTimer = setTimer;

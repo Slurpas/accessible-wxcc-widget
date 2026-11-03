@@ -1,5 +1,27 @@
 {
   "area": {
+    "headless": {
+      "id": "headless",
+      "widgets": {
+        "accessible-recorder": {
+          "comp": "accessible-wxcc-widget",
+          "script": "https://slurpas.github.io/accessible-wxcc-widget/accessible-wxcc-widget/accessible-wxcc-widget.js",
+          "attributes": {
+            "mode": "recorder"
+          },
+          "properties": {
+            "taskMap": "$STORE.agentContact.taskMap"
+          }
+        }
+      },
+      "layout": {
+        "areas": [["accessible-recorder"]],
+        "size": {
+          "cols": [1],
+          "rows": [1]
+        }
+      }
+    },
     "navigation": [
       {
         "nav": {
@@ -18,13 +40,17 @@
               "script": "https://slurpas.github.io/accessible-wxcc-widget/accessible-wxcc-widget/accessible-wxcc-widget.js",
               "attributes": {
                 "team-dashboard": "true",
-                "team-refresh-seconds": "30"
+                "team-refresh-seconds": "30",
+                "call-history": "true"
               },
               "properties": {
                 "agentId": "$STORE.agent.agentId",
                 "teamId": "$STORE.agent.teamId",
                 "channelsStatesMap": "$STORE.agent.channelsStatesMap",
-                "taskMap": "$STORE.agentContact.taskMap"
+                "taskMap": "$STORE.agentContact.taskMap",
+                "isOutboundEnabledForAgent": "$STORE.agent.isOutboundEnabledForAgent",
+                "isOutboundEnabledForTenant": "$STORE.agent.isOutboundEnabledForTenant",
+                "outDialEp": "$STORE.agent.outDialEp"
               },
               "wrapper": {
                 "title": "My Status",

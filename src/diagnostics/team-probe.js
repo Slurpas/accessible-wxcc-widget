@@ -21,7 +21,7 @@
 import { connectDesktop } from '../services/desktop-sdk.js';
 import { REASON_FIELDS } from '../services/team-dashboard.js';
 
-export const PROBE_VERSION = 3;
+export const PROBE_VERSION = 4;
 
 // Likely dataset names. The real names are not documented; add more with
 // { datasets: [...] } after searching Desktop's sources for "datasetName".
@@ -320,6 +320,30 @@ async function probeRtdwc(win, extra, waitMs) {
  * Run the probe. Options: datasets (extra names to try), waitMs (how long to
  * listen, default 10 s). Resolves to the report and prints it as JSON.
  */
+/**
+ * Can Desktop give us the agent's own recent calls? Calls the read-only
+ * postInteractions.fetchTasks for the last 24 hours, first page only, and
+ * reports only counts and the data's shape (never numbers or names).
+ */
+async function probeHistory(adapter, now = Date.now()) {
+  if (typeof adapter.fetchPostInteractionTasks !== 'function') return { available: false };
+  try {
+    const res = await withTimeout(Promise.resolve(adapter.fetchPostInteractionTasks({ startTime: now - 24 * 3600 * 1000, endTime: now, pageNumber: 0 })), 10000, 'fetchTasks');
+    const list = findList(res);
+    return { available: true, ok: true, count: list ? list.length : null, shape: describeShape(res, 4) };
+  } catch (err) {
+    return { available: true, ok: false, error: errorText(err) };
+  }
+}
+
+function findList(res) {
+  if (Array.isArray(res)) return res;
+  for (const v of [res && res.data, res && res.data && res.data.tasks, res && res.tasks, res && res.data && res.data.data]) {
+    if (Array.isArray(v)) return v;
+  }
+  return null;
+}
+
 export async function runTeamProbe({ datasets = [], waitMs = 10000, win = globalThis, connect = connectDesktop, print = true } = {}) {
   const report = { probe: 'accessible-wxcc-widget team probe', version: PROBE_VERSION, at: new Date().toISOString() };
   let adapter = null;
@@ -330,6 +354,7 @@ export async function runTeamProbe({ datasets = [], waitMs = 10000, win = global
     report.sdk = errorText(err);
   }
   if (adapter) report.buddyAgentsV2 = await probeBuddies(adapter);
+  if (adapter) report.callHistory = await probeHistory(adapter);
   report.realTimeData = await probeRtdwc(win, datasets.map(String), waitMs);
   if (adapter) adapter.cleanup();
   if (print) console.info(`[accessible-wxcc-widget] Team probe report (contains no names, IDs or tokens; safe to share):\n${JSON.stringify(report, null, 2)}`);

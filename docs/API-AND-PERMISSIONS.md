@@ -17,10 +17,21 @@ OAuth client and needs no admin role.
 | `Desktop.actions.getTaskMap()` | Restore the call shown when the page opens mid-call | Own tasks | Call panel waits for the next event |
 | `Desktop.agentContact` events: `eAgentOfferContact`, `eAgentContactAssigned`, `eAgentContact`, `eAgentContactAniUpdated`, `eAgentContactHeld`, `eAgentContactUnHeld`, `eAgentWrapup`, `eAgentContactEnded`, `eAgentContactWrappedUp`, `eAgentOfferContactRona`, `eAgentConsultCreated`, `eAgentConsulting`, `eAgentConsultEnded`, `eAgentConsultConferenced`, `eAgentConsultConferenceEnded`, `eContactOwnerChanged`, `eAgentCtqCancelled` | Current call panel | Own contacts | Call panel only |
 | `Desktop.agentContact.buddyAgentsV2({data:{agentProfileId, mediaType:"telephony", channelName:"telephony", state}})` ×2 (Available, Idle) | Team list | Same list Desktop shows for consult/transfer | Team panel shows CONNECTION ERROR; other features unaffected |
+| `Desktop.dialer.startOutdial({data:{entryPointId, destination, direction:"OUTBOUND", attributes:{}, mediaType:"telephony", outboundType:"OUTDIAL"}})` | "Call back" in Recent calls, only after the agent confirms | Same as Desktop's own outdial (agent's outdial entry point) | Assertive announcement; button available again |
+| `Desktop.dialer` event `eOutdialFailed` | Report a failed call back | Own events | — |
 | `Desktop.logger.createLogger(...)` | Write to Desktop's log collection | — | Falls back to console |
 
 Layout STORE bindings (read-only, pushed by Desktop): `$STORE.agent.agentId`,
-`$STORE.agent.teamId`, `$STORE.agent.channelsStatesMap`, `$STORE.agentContact.taskMap`.
+`$STORE.agent.teamId`, `$STORE.agent.channelsStatesMap`, `$STORE.agentContact.taskMap`,
+`$STORE.agent.isOutboundEnabledForAgent`, `$STORE.agent.isOutboundEnabledForTenant`,
+`$STORE.agent.outDialEp`.
+
+**Recent calls** are built only from the contact events above and kept in memory
+for the Desktop session (max 25, telephony only, number/direction/queue/times).
+Nothing is written to browser storage, logged or sent anywhere. Webex keeps a
+post-interaction history in Desktop (`Desktop.postInteractions.fetchTasks`), but
+it is not documented for widgets; the probe only checks whether it answers
+(`callHistory` in the report, counts and shape only).
 
 **Not used:** `Desktop.actions.getToken()`, `STORE.auth.accessToken`, any REST API,
 the deprecated `stateChange()`, `getIdleCodes()`, `buddyAgents()` and the global `subStatus`/`updated` event.
@@ -84,6 +95,11 @@ Desktop's sources in DevTools (Ctrl+Shift+F) for `datasetName` and pass them:
 `await accessibleWxccProbe({ datasets: ['name1', 'name2'] })`.
 
 Run it once as a supervisor and once as an ordinary agent; entitlements may differ.
+
+Result, 3 Nov 2026 (probe v3, `agent_supervisor` user): all nine `wxcc.rtd.*`
+datasets answered. `wxcc.rtd.agentchanneltypestatus` gives, per logged-in agent,
+`state` (e.g. `Idle`), `idleCodeName` (e.g. `Lunch`) and `teamId`, which is enough
+for an exact team list. Still to check: the same with an ordinary agent user.
 
 ## Configuration in Control Hub (for the pilot agent)
 

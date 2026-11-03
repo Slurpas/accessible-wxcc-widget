@@ -15,6 +15,9 @@ Schema reference: Cisco "Create custom desktop layout"
 2. Make a copy, and in the copy's agent section add the navigation entry from
    `example-layout.json` to the existing `"navigation": [ ... ]` array of the
    `area` object. Leave everything else unchanged.
+   Optional: also add the `headless` block (see "Recent calls" below). If the
+   layout already has a `headless` area, add only the `accessible-recorder`
+   widget to its `widgets` and to its `layout.areas`.
 3. The `script` URL already points to the GitHub Pages build. If you host the bundle
    elsewhere, change it to that URL (see DEPLOYMENT.md).
 4. If another page is already `"isDefaultLandingPage": true`, decide which one
@@ -34,13 +37,37 @@ Rollback: assign the team back to the original layout.
 | `teamId` | `$STORE.agent.teamId` | Filters the team list to the agent's own team. |
 | `channelsStatesMap` | `$STORE.agent.channelsStatesMap` | Current status (granular state model). Required for the status display. |
 | `taskMap` | `$STORE.agentContact.taskMap` | Restores the call panel if the page opens during a call. |
+| `isOutboundEnabledForAgent` | `$STORE.agent.isOutboundEnabledForAgent` | "Call back" is hidden when outdial is off for the agent. |
+| `isOutboundEnabledForTenant` | `$STORE.agent.isOutboundEnabledForTenant` | Same, for the tenant. |
+| `outDialEp` | `$STORE.agent.outDialEp` | Outdial entry point used by "Call back". Without it "Call back" is hidden. |
+
+The three outdial bindings are optional: the widget falls back to the same values
+in the SDK's agent data.
 
 | Attribute | Values | Default |
 |---|---|---|
 | `team-dashboard` | `"true"` / `"false"` | `"true"` |
 | `team-refresh-seconds` | number ≥ 15 | `30` |
+| `call-history` | `"true"` / `"false"` | `"true"` |
+| `mode` | `"recorder"` (headless area only) | — |
 | `theme` | `"dark"` / `"light"` | `"dark"` (agent can change in the widget) |
 | `text-size` | `"100"` / `"125"` / `"150"` | `"100"` (agent can change in the widget) |
+
+## Recent calls
+
+The "Recent calls" panel lists the agent's calls in this Desktop session (up to
+25, newest first): number, IN / OUT / MISSED, time, talk time and queue. It is
+kept in memory only. It is not saved in the browser and is gone when Desktop is
+reloaded or the agent signs out.
+
+"Call back" starts a normal Desktop outdial (`Desktop.dialer.startOutdial`) with
+the agent's own outdial entry point, after a second "Call now" press. It is
+disabled during a call and hidden when outdial is not enabled for the agent.
+Desktop applies the same rules as its own dial pad.
+
+The visible widget only sees calls while its page is open. The optional
+`headless` block runs a hidden copy (`mode="recorder"`) that records calls while
+the agent is on other Desktop pages. It shows nothing and changes nothing.
 
 ## Placement notes
 

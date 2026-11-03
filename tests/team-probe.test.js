@@ -151,6 +151,27 @@ describe('team probe', () => {
     expect(JSON.stringify(r)).not.toMatch(/Anna|9f0c1a2b/);
   });
 
+  it("reports whether Desktop's post-interaction history can be read, without numbers", async () => {
+    const { adapter, win, connect } = setup();
+    adapter.fetchPostInteractionTasks = vi.fn(async () => ({ data: { tasks: [{ ani: '+46461234567', direction: 'INBOUND', agentName: 'Anna Svensson' }] } }));
+    const r = await runTeamProbe({ win, connect, waitMs: 20, print: false });
+    expect(r.callHistory).toMatchObject({ available: true, ok: true, count: 1 });
+    const args = adapter.fetchPostInteractionTasks.mock.calls[0][0];
+    expect(args.pageNumber).toBe(0);
+    expect(args.endTime - args.startTime).toBe(24 * 3600 * 1000);
+    expect(JSON.stringify(r)).not.toMatch(/46461234567|Anna/);
+  });
+
+  it('reports a history error or a missing API', async () => {
+    const { adapter, win, connect } = setup();
+    expect((await runTeamProbe({ win, connect, waitMs: 20, print: false })).callHistory).toEqual({ available: false });
+    adapter.fetchPostInteractionTasks = vi.fn(async () => {
+      throw new Error('Forbidden for anna@example.com');
+    });
+    const r = await runTeamProbe({ win, connect, waitMs: 20, print: false });
+    expect(r.callHistory).toEqual({ available: true, ok: false, error: 'Forbidden for <email>' });
+  });
+
   it('reads no catalogue from objects without one', () => {
     expect(datasetCatalog({})).toEqual({ constants: {}, factoryApi: [], names: [] });
   });

@@ -29,6 +29,7 @@ const sdk = vi.hoisted(() => {
     },
     agentStateInfo,
     agentContact: { addEventListener: vi.fn(), removeEventListener: vi.fn() },
+    dialer: { startOutdial: vi.fn(async () => ({ data: {} })), addEventListener: vi.fn(), removeEventListener: vi.fn() },
     logger: { createLogger: () => null },
   };
   return { Desktop, state };
@@ -63,5 +64,21 @@ describe('connectDesktop inside Desktop', () => {
     adapter.cleanup();
     expect(sdk.Desktop.agentStateInfo.removeEventListener).toHaveBeenCalledWith('eAgentChannelStateChanged', handler);
     expect(sdk.Desktop.config.cleanup).not.toHaveBeenCalled();
+  });
+
+  it('passes outdial requests to Desktop.dialer.startOutdial in the documented shape', async () => {
+    const adapter = await connectDesktop();
+    const data = { entryPointId: 'ep', destination: '+4646123456', direction: 'OUTBOUND', attributes: {}, mediaType: 'telephony', outboundType: 'OUTDIAL' };
+    await adapter.startOutdial(data);
+    expect(sdk.Desktop.dialer.startOutdial).toHaveBeenCalledWith({ data });
+    const onFail = () => {};
+    adapter.onDialerEvent('eOutdialFailed', onFail);
+    adapter.cleanup();
+    expect(sdk.Desktop.dialer.removeEventListener).toHaveBeenCalledWith('eOutdialFailed', onFail);
+  });
+
+  it('reports a missing post-interaction API instead of crashing', async () => {
+    const adapter = await connectDesktop();
+    expect(() => adapter.fetchPostInteractionTasks({})).toThrow('not available');
   });
 });

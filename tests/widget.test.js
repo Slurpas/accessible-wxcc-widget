@@ -4,6 +4,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createMockAdapter } from '../src/mock/mock-desktop.js';
+import { sessionHistory } from '../src/services/call-history.js';
 
 let currentAdapter;
 vi.mock('../src/services/desktop-sdk.js', () => ({
@@ -29,6 +30,7 @@ async function mount(attrs = {}, props = {}) {
 
 beforeEach(() => {
   localStorage.clear();
+  sessionHistory.clear();
   currentAdapter = createMockAdapter({ latencyMs: 5 });
 });
 
@@ -50,7 +52,7 @@ describe('<accessible-wxcc-widget>', () => {
     const labels = qa('.state-btn .btn-label').map((b) => b.textContent);
     expect(labels).toEqual(['READY', 'NOT READY', 'LUNCH', 'BREAK', 'ADMIN']); // RONA (system) excluded
     // Reading order: status, call, buttons, team (call info is never pushed below a long button list).
-    expect(qa('h2').map((h) => h.textContent)).toEqual(['My status', 'My current call', 'Change status', 'My team']);
+    expect(qa('h2').map((h) => h.textContent)).toEqual(['My status', 'My current call', 'Change status', 'Recent calls', 'My team']);
     expect(q('.state-buttons').dataset.density).toBe('few');
     expect(q('.state-btn').classList.contains('state-btn-ready')).toBe(true);
   });
@@ -213,6 +215,122 @@ describe('<accessible-wxcc-widget>', () => {
     document.body.append(el);
     await wait(60);
     expect(q('.status-label').textContent).toBe('NOT READY');
+  });
+
+  it('lists finished calls under Recent calls, newest first', async () => {
+    await mount({}, { agentId: currentAdapter.agentId });
+    expect(q('.history-empty').textContent).toContain('No calls yet');
+    currentAdapter.controls.incomingCall({ ani: '+46 46 123 456' });
+    await wait();
+    expect(q('.history-kind').textContent).toBe('NOW');
+    expect(q('.history-back')).toBeNull(); // no call back for the call in progress
+    currentAdapter.controls.answer();
+    currentAdapter.controls.endCall();
+    currentAdapter.controls.wrapUp();
+    await wait();
+    currentAdapter.controls.incomingCall({ ani: '+46 70 000 11 22' });
+    await wait();
+    currentAdapter.controls.endCall();
+    currentAdapter.controls.wrapUp();
+    await wait();
+    expect(qa('.history-number').map((n) => n.textContent)).toEqual(['+46 70 000 11 22', '+46 46 123 456']);
+    expect(qa('.history-kind').map((n) => n.textContent)).toEqual(['MISSED', 'IN']);
+    expect(q('.history-info').getAttribute('aria-label')).toMatch(/^Missed call, plus 4 6, 7 0/);
+  });
+
+  it('keeps recent calls when Desktop switches pages (remount)', async () => {
+    await mount({}, { agentId: currentAdapter.agentId });
+    currentAdapter.controls.incomingCall({ ani: '+46 46 123 456' });
+    currentAdapter.controls.answer();
+    currentAdapter.controls.endCall();
+    currentAdapter.controls.wrapUp();
+    await wait();
+    el.remove();
+    currentAdapter = createMockAdapter({ latencyMs: 5 });
+    document.body.append(el);
+    await wait(60);
+    expect(qa('.history-number').map((n) => n.textContent)).toEqual(['+46 46 123 456']);
+  });
+
+  async function finishedCall(ani = '+46 46 123 456') {
+    currentAdapter.controls.incomingCall({ ani });
+    currentAdapter.controls.answer();
+    currentAdapter.controls.endCall();
+    currentAdapter.controls.wrapUp();
+    await wait();
+  }
+
+  it('call back asks first, then dials with the documented outdial payload', async () => {
+    const dial = vi.spyOn(currentAdapter, 'startOutdial');
+    await mount({}, { agentId: currentAdapter.agentId });
+    await finishedCall();
+    const back = q('.history-back');
+    expect(back.getAttribute('aria-label')).toBe('Call back plus 4 6, 4 6, 1 2 3, 4 5 6');
+    back.focus();
+    back.click();
+    expect(dial).not.toHaveBeenCalled();
+    expect(q('.history-question').textContent).toBe('Call +46 46 123 456 now?');
+    expect(el.shadowRoot.activeElement).toBe(q('.history-call-now'));
+    q('.history-call-now').click();
+    expect(dial).toHaveBeenCalledTimes(1);
+    expect(dial.mock.calls[0][0]).toEqual({
+      entryPointId: currentAdapter.getLatestData().outDialEp,
+      destination: '+4646123456',
+      direction: 'OUTBOUND',
+      attributes: {},
+      mediaType: 'telephony',
+      outboundType: 'OUTDIAL',
+    });
+    await wait(80);
+    expect(q('.call-number').textContent).toBe('+4646123456');
+    expect(q('.history-kind').textContent).toBe('NOW');
+  });
+
+  it('Cancel and Escape back out without dialling and return focus', async () => {
+    const dial = vi.spyOn(currentAdapter, 'startOutdial');
+    await mount({}, { agentId: currentAdapter.agentId });
+    await finishedCall();
+    q('.history-back').click();
+    q('.history-cancel').click();
+    expect(q('.history-confirm')).toBeNull();
+    expect(el.shadowRoot.activeElement).toBe(q('.history-back'));
+    q('.history-back').click();
+    q('.history-call-now').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(q('.history-confirm')).toBeNull();
+    expect(dial).not.toHaveBeenCalled();
+  });
+
+  it('call back is disabled during a call and hidden when outdial is not allowed', async () => {
+    await mount({}, { agentId: currentAdapter.agentId });
+    await finishedCall();
+    currentAdapter.controls.incomingCall({ ani: '+46 70 000 11 22' });
+    await wait();
+    expect(qa('.history-back').every((b) => b.disabled)).toBe(true);
+    expect(q('.history-status').textContent).toContain('no active call');
+    el.isOutboundEnabledForAgent = false;
+    expect(q('.history-back')).toBeNull();
+  });
+
+  it('announces a failed outdial assertively and allows a new try', async () => {
+    await mount({}, { agentId: currentAdapter.agentId });
+    await finishedCall();
+    currentAdapter.controls.failNextOutdial();
+    q('.history-back').click();
+    q('.history-call-now').click();
+    await wait(80);
+    expect(q('[role="alert"]').textContent).toContain('The call could not be started');
+    expect(q('.history-back').disabled).toBe(false);
+  });
+
+  it('can turn recent calls off, and a recorder instance shows nothing', async () => {
+    await mount({ 'call-history': 'false' }, { agentId: currentAdapter.agentId });
+    expect(q('.panel-history').hidden).toBe(true);
+    el.remove();
+    await mount({ mode: 'recorder' });
+    expect(el.shadowRoot.childNodes.length).toBe(0);
+    currentAdapter.controls.incomingCall({ ani: '+46 46 123 456' });
+    await wait();
+    expect(sessionHistory.list()).toHaveLength(1);
   });
 
   it('accepts properties assigned before the element is upgraded', async () => {

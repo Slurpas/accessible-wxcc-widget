@@ -3,12 +3,17 @@
  *
  * Inputs from the Desktop layout (see desktop-layout/example-layout.json):
  *   properties: agentId, teamId, channelsStatesMap, taskMap   ($STORE bindings)
+ *               isOutboundEnabledForAgent, isOutboundEnabledForTenant,
+ *               outDialEp                  outdial settings for "Call back"
  *   attributes: team-dashboard="false"     turn the team list off
+ *               call-history="false"       turn the recent calls list off
+ *               mode="recorder"            no UI: only records recent calls
+ *                                          (for the layout's headless area)
  *               team-refresh-seconds="30"  team refresh interval (min 15)
  *               theme="dark|light"         default theme (user choice wins)
  *               text-size="100|125|150"    default text size (user choice wins)
  *
- * Each feature (status, call, team) runs independently: a failure in one
+ * Each feature (status, call, history, team) runs independently: a failure in one
  * never stops the others, and the status buttons never depend on the
  * call or team features.
  */
@@ -20,8 +25,10 @@ import { TeamService, DEFAULT_REFRESH_SECONDS } from './services/team-dashboard.
 import { AudioNotifier } from './services/audio-notify.js';
 import { createCurrentStatus } from './components/current-status.js';
 import { createStatusButtons, buildButtonDefs } from './components/status-buttons.js';
-import { createCurrentCall } from './components/current-call.js';
+import { createCurrentCall, spokenNumber } from './components/current-call.js';
 import { createTeamList } from './components/team-list.js';
+import { createHistoryList } from './components/history-list.js';
+import { sessionHistory, attachRecorder } from './services/call-history.js';
 import { h, setText } from './components/dom.js';
 import { Disposer } from './utils/cleanup.js';
 import { DISPLAY } from './utils/status-mapper.js';
@@ -35,7 +42,9 @@ import a11yCss from './styles/accessibility.css?inline';
 const MOCK_ALLOWED = typeof __AWX_MOCK_ALLOWED__ !== 'undefined' && __AWX_MOCK_ALLOWED__;
 const PREFS_KEY = 'accessible-wxcc-widget.prefs';
 const TEXT_SIZES = ['100', '125', '150'];
-const LAYOUT_PROPS = ['agentId', 'teamId', 'channelsStatesMap', 'taskMap'];
+const OUTDIAL_PROPS = ['isOutboundEnabledForAgent', 'isOutboundEnabledForTenant', 'outDialEp'];
+const LAYOUT_PROPS = ['agentId', 'teamId', 'channelsStatesMap', 'taskMap', ...OUTDIAL_PROPS];
+const DIAL_TIMEOUT_MS = 30000;
 
 /** Only non-sensitive display preferences are stored (theme, text size). */
 function readPrefs() {
@@ -60,13 +69,13 @@ function writePrefs(prefs) {
 
 export class AccessibleWxccWidget extends HTMLElement {
   static get observedAttributes() {
-    return ['team-dashboard'];
+    return ['team-dashboard', 'call-history'];
   }
 
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
-    this._props = { agentId: '', teamId: '', channelsStatesMap: null, taskMap: null };
+    this._props = { agentId: '', teamId: '', channelsStatesMap: null, taskMap: null, isOutboundEnabledForAgent: undefined, isOutboundEnabledForTenant: undefined, outDialEp: undefined };
     this._built = false;
     this._session = 0;
     this._services = {};
@@ -105,6 +114,18 @@ export class AccessibleWxccWidget extends HTMLElement {
     if (this._services.contacts && v) this._safe('call', () => this._services.contacts.setTaskMap(v));
   }
 
+  get isOutboundEnabledForAgent() { return this._props.isOutboundEnabledForAgent; }
+  set isOutboundEnabledForAgent(v) { this._setOutdialProp('isOutboundEnabledForAgent', v); }
+  get isOutboundEnabledForTenant() { return this._props.isOutboundEnabledForTenant; }
+  set isOutboundEnabledForTenant(v) { this._setOutdialProp('isOutboundEnabledForTenant', v); }
+  get outDialEp() { return this._props.outDialEp; }
+  set outDialEp(v) { this._setOutdialProp('outDialEp', v); }
+
+  _setOutdialProp(name, v) {
+    this._props[name] = v;
+    this._renderHistory();
+  }
+
   // ---- Lifecycle ----
   connectedCallback() {
     // Desktop may assign properties before this element was upgraded.
@@ -116,7 +137,7 @@ export class AccessibleWxccWidget extends HTMLElement {
       }
     }
     if (!this._built) this._build();
-    this._applyPrefs();
+    if (!this._isRecorder()) this._applyPrefs();
     this._start();
   }
 
@@ -125,7 +146,7 @@ export class AccessibleWxccWidget extends HTMLElement {
   }
 
   attributeChangedCallback(name, oldV, newV) {
-    if (name === 'team-dashboard' && oldV !== newV && this.isConnected && this._built) {
+    if ((name === 'team-dashboard' || name === 'call-history') && oldV !== newV && this.isConnected && this._built) {
       this._stop();
       this._start();
     }
@@ -133,6 +154,11 @@ export class AccessibleWxccWidget extends HTMLElement {
 
   // ---- DOM ----
   _build() {
+    if (this._isRecorder()) {
+      this.shadowRoot.replaceChildren();
+      this._built = true;
+      return;
+    }
     const style = document.createElement('style');
     style.textContent = `${themesCss}\n${mainCss}\n${a11yCss}`;
 
@@ -152,6 +178,7 @@ export class AccessibleWxccWidget extends HTMLElement {
     ui.status = createCurrentStatus();
     ui.buttons = createStatusButtons({ onSelect: (def) => this._onSelectState(def) });
     ui.call = createCurrentCall();
+    ui.history = createHistoryList({ onDial: (e) => this._dial(e), onCancel: () => this._announce(STRINGS.dialCancelled) });
     ui.team = createTeamList({ onRefresh: () => this._services.team && this._services.team.manualRefresh() });
 
     ui.root = h(
@@ -167,10 +194,11 @@ export class AccessibleWxccWidget extends HTMLElement {
           h('div', { class: 'awx-settings', role: 'group', 'aria-label': STRINGS.settings }, ui.themeBtn, ui.sizeBtn, ui.soundBtn),
         ),
         ui.banner,
-        // DOM (reading and focus) order: status, call, buttons, team. On wide
-        // screens CSS places the buttons in their own scrolling column so a long
-        // list of idle codes never pushes the status, call or team out of view.
-        h('div', { class: 'awx-main' }, ui.status.el, ui.call.el, ui.buttons.el, ui.team.el),
+        // DOM (reading and focus) order: status, call, buttons, recent calls,
+        // team. On wide screens CSS places the buttons in their own scrolling
+        // column so a long list of idle codes never pushes the other panels
+        // out of view.
+        h('div', { class: 'awx-main' }, ui.status.el, ui.call.el, ui.buttons.el, ui.history.el, ui.team.el),
       ),
       ui.polite,
       ui.assertive,
@@ -182,6 +210,7 @@ export class AccessibleWxccWidget extends HTMLElement {
 
   // ---- Start / stop ----
   async _start() {
+    if (this._isRecorder()) return this._startRecorder();
     const session = ++this._session;
     const ui = this._ui;
     this._connection = 'loading';
@@ -190,6 +219,7 @@ export class AccessibleWxccWidget extends HTMLElement {
     ui.buttons.setDefs(buildButtonDefs([]));
     ui.buttons.setEnabled(false);
     ui.call.update({ primary: null, others: 0 });
+    ui.history.setHidden(!this._historyEnabled());
     ui.team.update(this._teamEnabled() ? { phase: 'loading', rows: [] } : { phase: 'disabled' }, false);
 
     let adapter;
@@ -216,6 +246,7 @@ export class AccessibleWxccWidget extends HTMLElement {
     this._safe('status', () => this._startAgentState(adapter));
     this._safe('status', () => this._startAuxCodes(adapter, session));
     this._safe('call', () => this._startContacts(adapter));
+    if (this._historyEnabled()) this._safe('history', () => this._startHistory(adapter));
     if (this._teamEnabled()) this._safe('team', () => this._startTeam(adapter));
     this._safe('connection', () => this._watchConnection(adapter));
   }
@@ -233,6 +264,8 @@ export class AccessibleWxccWidget extends HTMLElement {
     this._disposer.dispose();
     clearTimeout(this._politeTimer);
     clearTimeout(this._assertiveTimer);
+    clearTimeout(this._dialTimer);
+    this._dialPending = false;
     if (this._adapter) {
       try {
         this._adapter.cleanup();
@@ -243,6 +276,32 @@ export class AccessibleWxccWidget extends HTMLElement {
     }
     this._audio.close();
     this._setSoundUi(false);
+  }
+
+  _isRecorder() {
+    return this.getAttribute('mode') === 'recorder';
+  }
+
+  /** Headless instance: keeps the recent calls list filled while no visible widget is open. */
+  async _startRecorder() {
+    const session = ++this._session;
+    let adapter;
+    try {
+      adapter = await this._createAdapter();
+    } catch (err) {
+      log.warn('Recorder could not connect', err);
+      return;
+    }
+    if (session !== this._session) {
+      adapter.cleanup();
+      return;
+    }
+    this._adapter = adapter;
+    const contacts = new ContactService({ adapter });
+    this._services.contacts = contacts;
+    this._disposer.add(attachRecorder(contacts));
+    contacts.start();
+    if (this._props.taskMap) contacts.setTaskMap(this._props.taskMap);
   }
 
   async _createAdapter() {
@@ -338,7 +397,8 @@ export class AccessibleWxccWidget extends HTMLElement {
     contacts.notices.subscribe((n) => {
       const c = n.call;
       if (n.kind === 'new') {
-        this._announce(STRINGS.callAnnounceNew(c.customerNumber || STRINGS.unknownNumber, c.queue));
+        const who = c.customerNumber || STRINGS.unknownNumber;
+        this._announce(c.direction === 'OUTBOUND' ? STRINGS.callAnnounceOutbound(who) : STRINGS.callAnnounceNew(who, c.queue));
         this._audio.play('newCall');
       } else if (n.kind === 'state') {
         this._announce(STRINGS.callAnnounceState(STRINGS.callState[c.callState] || c.callState));
@@ -346,8 +406,111 @@ export class AccessibleWxccWidget extends HTMLElement {
         this._announce(STRINGS.callAnnounceEnded);
       }
     });
+    this._disposer.add(attachRecorder(contacts));
     contacts.start();
     if (this._props.taskMap) contacts.setTaskMap(this._props.taskMap);
+  }
+
+  // ---- Feature: recent calls (optional) ----
+  _historyEnabled() {
+    return this.getAttribute('call-history') !== 'false';
+  }
+
+  _startHistory(adapter) {
+    this._historyOn = true;
+    this._disposer.add(sessionHistory.changes.subscribe(() => this._renderHistory()));
+    const contacts = this._services.contacts;
+    if (contacts) {
+      this._disposer.add(
+        contacts.changes.subscribe(() => {
+          // A new call means our dial request reached Desktop.
+          if (this._dialPending && contacts.calls.size) this._endDial();
+          this._renderHistory();
+        }),
+      );
+    }
+    if (typeof adapter.onDialerEvent === 'function') {
+      try {
+        this._disposer.add(adapter.onDialerEvent('eOutdialFailed', (m) => this._dialFailed(m)));
+      } catch {
+        /* dialer events not available in this SDK version */
+      }
+    }
+    this._disposer.add(() => {
+      this._historyOn = false;
+    });
+    this._renderHistory();
+  }
+
+  /** Outdial settings from the layout ($STORE) first, then the SDK's agent data. */
+  _outdial() {
+    let latest = {};
+    try {
+      latest = (this._adapter && this._adapter.getLatestData()) || {};
+    } catch {
+      /* optional */
+    }
+    const pick = (k) => (this._props[k] !== undefined && this._props[k] !== null ? this._props[k] : latest[k]);
+    const ep = pick('outDialEp');
+    const entryPointId = typeof ep === 'string' ? ep : ep && typeof ep === 'object' ? String(ep.id || '') : '';
+    const allowed = !!entryPointId && pick('isOutboundEnabledForAgent') !== false && pick('isOutboundEnabledForTenant') !== false;
+    return { allowed, entryPointId };
+  }
+
+  _renderHistory() {
+    if (!this._historyOn || !this._ui) return;
+    const contacts = this._services.contacts;
+    const activeIds = new Set(contacts ? contacts.calls.keys() : []);
+    const connected = this._connection === 'connected' || this._connection === 'mock';
+    const { allowed } = this._outdial();
+    const busy = activeIds.size > 0 || !!this._dialPending;
+    this._ui.history.update({
+      entries: sessionHistory.list(),
+      activeIds,
+      dialAllowed: allowed,
+      canDial: allowed && connected && !busy,
+      blockedMsg: this._dialPending ? STRINGS.dialPending : STRINGS.dialBusy,
+    });
+  }
+
+  /** Called only after the agent pressed "Call back" and then "Call now". */
+  async _dial(entry) {
+    const { allowed, entryPointId } = this._outdial();
+    const destination = String(entry.number || '').replace(/[\s().-]/g, '');
+    const adapter = this._adapter;
+    if (!allowed || !adapter || this._dialPending || !/^\+?\d{2,}$/.test(destination)) return;
+    if (this._services.contacts && this._services.contacts.calls.size) return;
+    this._dialPending = true;
+    this._dialTimer = setTimeout(() => this._endDial(), DIAL_TIMEOUT_MS);
+    this._renderHistory();
+    this._announce(STRINGS.dialing(spokenNumber(entry.number)));
+    try {
+      await adapter.startOutdial({
+        entryPointId,
+        destination,
+        direction: 'OUTBOUND',
+        attributes: {},
+        mediaType: 'telephony',
+        outboundType: 'OUTDIAL',
+      });
+    } catch (err) {
+      this._dialFailed(err);
+    }
+  }
+
+  _dialFailed(err) {
+    if (!this._dialPending) return;
+    this._endDial();
+    log.warn('Outdial failed', err);
+    this._announce(STRINGS.dialFailed(errorReason(err)), true);
+    this._audio.play('failure');
+  }
+
+  _endDial() {
+    clearTimeout(this._dialTimer);
+    if (!this._dialPending) return;
+    this._dialPending = false;
+    this._renderHistory();
   }
 
   // ---- Feature: team dashboard (optional) ----
@@ -497,6 +660,7 @@ export class AccessibleWxccWidget extends HTMLElement {
   _featureFailed(feature, err) {
     log.error(`${feature} feature failed`, err);
     if (feature === 'call') this._ui.call.update({ primary: null, others: 0, error: 'FAILED' });
+    if (feature === 'history') this._ui.history.setHidden(true);
     if (feature === 'team') this._ui.team.update({ phase: 'unavailable', rows: [] }, false);
     if (feature === 'status') this._ui.status.update({ phase: 'error', display: DISPLAY.ERROR });
   }
