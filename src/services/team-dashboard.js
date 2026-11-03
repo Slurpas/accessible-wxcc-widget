@@ -1,7 +1,12 @@
 /**
  * Optional team dashboard.
  *
- * Data source: Desktop.agentContact.buddyAgentsV2 — the same request Desktop
+ * Preferred source: Desktop's real-time data (team-realtime.js). It lists
+ * every logged-in colleague with the exact state and Not Ready reason and
+ * updates the moment something changes. If it is missing, rejected or silent,
+ * the service falls back to polling the buddy list below.
+ *
+ * Fallback source: Desktop.agentContact.buddyAgentsV2 — the same request Desktop
  * makes when an agent opens the consult/transfer list. It runs on the
  * agent's own Desktop session: no extra login, no token handling, no admin
  * rights.
@@ -18,11 +23,14 @@
 import { Emitter } from '../utils/cleanup.js';
 import { DISPLAY, compareTeamMembers, mapBuddyState } from '../utils/status-mapper.js';
 import { log, errorReason } from '../utils/logger.js';
+import { RealtimeTeamFeed, mapRealtimeAgents } from './team-realtime.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const MIN_REFRESH_SECONDS = 15;
 export const DEFAULT_REFRESH_SECONDS = 30;
 const MANUAL_REFRESH_GAP_MS = 10000;
+/** How long to wait for the first real-time update before using the buddy list. */
+export const LIVE_FIRST_DATA_MS = 10000;
 
 /** Build a display name from the fields Cisco has used across versions. */
 function nameOf(a) {
@@ -86,8 +94,11 @@ export function mapBuddyAgents(lists, { teamId, selfId, codeNames }) {
 }
 
 export class TeamService {
-  constructor({ adapter, refreshSeconds = DEFAULT_REFRESH_SECONDS, now = () => Date.now() }) {
+  constructor({ adapter, refreshSeconds = DEFAULT_REFRESH_SECONDS, now = () => Date.now(), realtime = true }) {
     this.adapter = adapter;
+    this.useRealtime = realtime && typeof adapter.subscribeRealtime === 'function';
+    this.mode = ''; // 'live' | 'poll'
+    this._feed = null;
     this.refreshMs = Math.max(MIN_REFRESH_SECONDS, Number(refreshSeconds) || DEFAULT_REFRESH_SECONDS) * 1000;
     this.now = now;
     this.changes = new Emitter();
@@ -106,6 +117,7 @@ export class TeamService {
       lastSuccess: 0,
       error: '',
       refreshSeconds: this.refreshMs / 1000,
+      live: false,
     };
     // Coming back to the Desktop tab: update at once if the list is older than one interval.
     this._onVisible = () => {
@@ -116,9 +128,54 @@ export class TeamService {
   setContext({ teamId, selfId }) {
     if (typeof teamId === 'string' && teamId) this.teamId = teamId;
     if (typeof selfId === 'string' && selfId) this.selfId = selfId;
+    if (this.mode === 'live' && this._feed && this._feed.hasData) this._renderLive();
   }
 
   start() {
+    this._stopped = false;
+    if (this.useRealtime) this._startLive();
+    else this._startPolling();
+  }
+
+  // ---- Live (real-time data) ----
+  async _startLive() {
+    this.mode = 'live';
+    const feed = new RealtimeTeamFeed({
+      adapter: this.adapter,
+      onChange: () => this._renderLive(),
+      onError: (err) => this._liveFailed(err),
+    });
+    this._feed = feed;
+    this._liveTimer = setTimeout(() => {
+      if (!feed.hasData) this._liveFailed(new Error('No real-time data received'));
+    }, LIVE_FIRST_DATA_MS);
+    try {
+      await feed.start();
+    } catch (err) {
+      this._liveFailed(err);
+    }
+  }
+
+  _renderLive() {
+    if (this.mode !== 'live' || !this._feed) return;
+    clearTimeout(this._liveTimer);
+    const mapped = mapRealtimeAgents(this._feed.states, this._feed.contacts, { teamId: this.teamId, selfId: this.selfId, codeNames: this.codeNames });
+    this._set({ phase: 'ok', ...mapped, lastSuccess: this.now(), error: '', live: true });
+  }
+
+  _liveFailed(err) {
+    if (this._stopped || this.mode !== 'live') return;
+    clearTimeout(this._liveTimer);
+    log.warn('Real-time team data not available; using the buddy list', err);
+    if (this._feed) this._feed.stop();
+    this._feed = null;
+    this.state = { ...this.state, live: false };
+    this._startPolling();
+  }
+
+  // ---- Polling (buddy list) ----
+  _startPolling() {
+    this.mode = 'poll';
     this.refresh();
     if (typeof document !== 'undefined') document.addEventListener('visibilitychange', this._onVisible);
     this._timer = setInterval(() => {
@@ -128,6 +185,10 @@ export class TeamService {
   }
 
   stop() {
+    this._stopped = true;
+    clearTimeout(this._liveTimer);
+    if (this._feed) this._feed.stop();
+    this._feed = null;
     if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', this._onVisible);
     clearInterval(this._timer);
     this._timer = null;
@@ -137,6 +198,10 @@ export class TeamService {
   /** Idle codes the widget already loaded; used to name colleagues' Not Ready reasons. */
   setIdleCodes(codes) {
     this.codeNames = new Map((codes || []).map((c) => [String(c.id), String(c.name)]));
+    if (this.mode === 'live') {
+      if (this._feed && this._feed.hasData) this._renderLive();
+      return;
+    }
     if (this._lastLists && this.state.phase === 'ok') {
       this._set(mapBuddyAgents(this._lastLists, { teamId: this.teamId, selfId: this.selfId, codeNames: this.codeNames }));
     }
@@ -150,10 +215,12 @@ export class TeamService {
   }
 
   isStale() {
+    if (this.mode === 'live') return false; // pushed by Webex; a quiet feed means nothing changed
     return this.state.lastSuccess > 0 && this.now() - this.state.lastSuccess > this.refreshMs * 2.5;
   }
 
   refresh() {
+    if (this.mode === 'live') return Promise.resolve();
     if (this._inFlight) return this._inFlight;
     this._inFlight = this._load().finally(() => {
       this._inFlight = null;

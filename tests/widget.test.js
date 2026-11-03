@@ -74,11 +74,34 @@ describe('<accessible-wxcc-widget>', () => {
     expect(johan.querySelector('.team-state').textContent).toBe('NOT READY');
   });
 
-  it('tells the agent the team list updates by itself', async () => {
-    await mount({}, { agentId: currentAdapter.agentId });
+  it('team list is live: exact status, reasons and log-outs appear without refreshing', async () => {
+    await mount({}, { agentId: currentAdapter.agentId, teamId: currentAdapter.teamId });
+    expect(q('.team-status').textContent).toBe('Live: updates as soon as a colleague changes status.');
+    expect(q('.team-refresh').hidden).toBe(true);
+    expect(q('.panel-team').textContent).not.toMatch(/Webex lists|Team filter/);
+    const row = (name) => qa('.team-row').find((r) => r.textContent.includes(name));
+    currentAdapter.controls.setColleague('m-2', 'Idle', 'Meeting');
+    await wait();
+    expect(row('Demo Anna').querySelector('.team-state').textContent).toBe('NOT READYMeeting');
+    currentAdapter.controls.colleagueCall('m-4');
+    await wait();
+    expect(row('Demo Maria').dataset.status).toBe('BUSY');
+    currentAdapter.controls.colleagueCall('m-4', 'wrapup');
+    await wait();
+    expect(row('Demo Maria').dataset.status).toBe('WRAP_UP');
+    currentAdapter.controls.setColleague('m-5', 'LoggedOut');
+    await wait();
+    expect(row('Demo Johan')).toBeUndefined();
+    expect(q('.team-summary').textContent).toBe('0 ready · 3 logged in');
+  });
+
+  it('falls back to the buddy list (polled every 30 s) without real-time data', async () => {
+    currentAdapter = createMockAdapter({ latencyMs: 5, realtime: false });
+    await mount({}, { agentId: currentAdapter.agentId, teamId: currentAdapter.teamId });
+    await wait(60);
     expect(q('.team-status').textContent).toMatch(/^Updates automatically every 30 seconds\. Last updated /);
     expect(q('.team-refresh').textContent).toBe('Refresh now');
-    expect(q('.panel-team').textContent).not.toMatch(/Webex lists|Team filter/);
+    expect(q('.team-summary').textContent).toBe('2 ready · 4 logged in and listed');
   });
 
   it('marks the current state with aria-pressed and visible text', async () => {
@@ -161,7 +184,7 @@ describe('<accessible-wxcc-widget>', () => {
     const names = qa('.team-name').map((n) => n.textContent);
     expect(names).not.toContain('Other Team Agent (mock)');
     expect(names[0]).toMatch(/Anna|Maria/);
-    expect(q('.team-summary').textContent).toBe('2 ready · 4 logged in and listed');
+    expect(q('.team-summary').textContent).toBe('2 ready · 4 logged in');
   });
 
   it('team list can be turned off by attribute', async () => {
@@ -171,6 +194,7 @@ describe('<accessible-wxcc-widget>', () => {
   });
 
   it('team failure does not affect status buttons', async () => {
+    currentAdapter = createMockAdapter({ latencyMs: 5, realtime: false });
     currentAdapter.buddyAgentsV2 = async () => {
       throw new Error('denied');
     };

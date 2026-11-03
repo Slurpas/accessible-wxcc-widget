@@ -49,7 +49,7 @@ export function createTeamList({ onRefresh }) {
       return;
     }
     el.hidden = false;
-    refresh.hidden = s.phase === 'unavailable';
+    refresh.hidden = s.phase === 'unavailable' || !!s.live;
 
     if (s.phase === 'unavailable') {
       setText(summary, STRINGS.teamUnavailable);
@@ -64,7 +64,8 @@ export function createTeamList({ onRefresh }) {
       return;
     }
 
-    setText(summary, s.lastSuccess ? STRINGS.teamCounts(s.readyCount, s.rows.length) : '');
+    const counts = s.live ? STRINGS.teamCountsLive : STRINGS.teamCounts;
+    setText(summary, s.lastSuccess ? counts(s.readyCount, s.rows.length) : '');
     let msg = '';
     let kind = '';
     if (s.phase === 'error') {
@@ -73,6 +74,9 @@ export function createTeamList({ onRefresh }) {
     } else if (stale) {
       msg = STRINGS.teamStale(formatTime(s.lastSuccess));
       kind = 'warning';
+    } else if (s.lastSuccess && s.live) {
+      msg = STRINGS.teamLive;
+      kind = 'info';
     } else if (s.lastSuccess) {
       msg = STRINGS.teamUpdated(formatTime(s.lastSuccess), s.refreshSeconds);
       kind = 'info';

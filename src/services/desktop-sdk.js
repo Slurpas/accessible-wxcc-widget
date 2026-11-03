@@ -149,6 +149,17 @@ export function createDesktopAdapter(Desktop) {
       return api.fetchTasks(payload);
     },
 
+    /**
+     * Desktop's real-time data channel (Desktop.rtdwc, also window.wxcc.rtdwc).
+     * In the official SDK but not documented for widgets; used for the live
+     * team list, with buddyAgentsV2 as the fallback. Returns the subscription.
+     */
+    subscribeRealtime({ datasetName, update, error }) {
+      const rt = Desktop.rtdwc || (globalThis.wxcc && globalThis.wxcc.rtdwc);
+      if (!rt || typeof rt.subscribe !== 'function') throw new Error('Real-time data not available');
+      return rt.subscribe({ datasetName, update, error });
+    },
+
     onAgentStateEvent(eventName, handler) {
       return subscribe(Desktop.agentStateInfo, eventName, handler);
     },

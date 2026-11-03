@@ -16,7 +16,8 @@ OAuth client and needs no admin role.
 | `Desktop.agentConfigJsApi.fetchPaginatedAuxCodes({workType:"IDLE_CODE", page, pageSize:100})` | Not Ready reasons for buttons (respects the desktop profile) | Agent's own profile | Falls back to profile idle codes; if none, only READY is shown with an explanation |
 | `Desktop.actions.getTaskMap()` | Restore the call shown when the page opens mid-call | Own tasks | Call panel waits for the next event |
 | `Desktop.agentContact` events: `eAgentOfferContact`, `eAgentContactAssigned`, `eAgentContact`, `eAgentContactAniUpdated`, `eAgentContactHeld`, `eAgentContactUnHeld`, `eAgentWrapup`, `eAgentContactEnded`, `eAgentContactWrappedUp`, `eAgentOfferContactRona`, `eAgentConsultCreated`, `eAgentConsulting`, `eAgentConsultEnded`, `eAgentConsultConferenced`, `eAgentConsultConferenceEnded`, `eContactOwnerChanged`, `eAgentCtqCancelled` | Current call panel | Own contacts | Call panel only |
-| `Desktop.agentContact.buddyAgentsV2({data:{agentProfileId, mediaType:"telephony", channelName:"telephony", state}})` ×2 (Available, Idle) | Team list | Same list Desktop shows for consult/transfer | Team panel shows CONNECTION ERROR; other features unaffected |
+| `Desktop.rtdwc.subscribe({datasetName, update, error})` for `wxcc.rtd.agentchanneltypestatus` and `wxcc.rtd.agentchannelstatus` | Live team list: every logged-in colleague, exact state, Not Ready reason, on a call / wrap-up | Desktop's real-time channel in the agent's session (undocumented for widgets) | Falls back to `buddyAgentsV2` polling (below) |
+| `Desktop.agentContact.buddyAgentsV2({data:{agentProfileId, mediaType:"telephony", channelName:"telephony", state}})` ×2 (Available, Idle) | Team list fallback | Same list Desktop shows for consult/transfer | Team panel shows CONNECTION ERROR; other features unaffected |
 | `Desktop.dialer.startOutdial({data:{entryPointId, destination, direction:"OUTBOUND", attributes:{}, mediaType:"telephony", outboundType:"OUTDIAL"}})` | "Call back" in Recent calls, only after the agent confirms | Same as Desktop's own outdial (agent's outdial entry point) | Assertive announcement; button available again |
 | `Desktop.dialer` event `eOutdialFailed` | Report a failed call back | Own events | — |
 | `Desktop.logger.createLogger(...)` | Write to Desktop's log collection | — | Falls back to console |
@@ -100,6 +101,17 @@ Result, 3 Nov 2026 (probe v3, `agent_supervisor` user): all nine `wxcc.rtd.*`
 datasets answered. `wxcc.rtd.agentchanneltypestatus` gives, per logged-in agent,
 `state` (e.g. `Idle`), `idleCodeName` (e.g. `Lunch`) and `teamId`, which is enough
 for an exact team list. Still to check: the same with an ordinary agent user.
+
+**Live team list (built on this).** "My team" now subscribes to
+`wxcc.rtd.agentchanneltypestatus` (states) and `wxcc.rtd.agentchannelstatus`
+(current contact, for BUSY / WRAP-UP). It shows every logged-in colleague of the
+agent's own team (by `teamId`, self excluded) with the exact state and reason, and
+updates as soon as Webex pushes a change. Agents leave the list on a delete
+operation or a logged-out state. Unknown state words are shown as UNKNOWN with
+Webex's own word. If the feed is missing, rejects the subscription, reports an
+error or sends nothing within 10 s, the widget falls back to polling
+`buddyAgentsV2` every 30 s (Ready / Not Ready only), as before. Admins see the
+reason in Desktop's logs.
 
 ## Configuration in Control Hub (for the pilot agent)
 

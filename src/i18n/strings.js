@@ -86,6 +86,8 @@ export const STRINGS = {
   teamStale: (time) => `Information may be out of date. Last updated ${time}.`,
   teamError: (time) =>
     time ? `CONNECTION ERROR. Showing last known list from ${time}.` : 'CONNECTION ERROR. Team list could not be loaded.',
+  teamCountsLive: (ready, shown) => `${ready} ready · ${shown} logged in`,
+  teamLive: 'Live: updates as soon as a colleague changes status.',
   teamUpdated: (time, seconds) => `Updates automatically every ${seconds} seconds. Last updated ${time}.`,
   refresh: 'Refresh now',
 

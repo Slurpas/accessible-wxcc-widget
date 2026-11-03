@@ -34,7 +34,7 @@ Rollback: assign the team back to the original layout.
 | Property | STORE path | Used for |
 |---|---|---|
 | `agentId` | `$STORE.agent.agentId` | Required by `stateChangeV2`. Without it the status buttons are disabled. |
-| `teamId` | `$STORE.agent.teamId` | Filters the team list to the agent's own team. |
+| `teamId` | `$STORE.agent.teamId` | Filters the team list to the agent's own team (live list and buddy-list fallback). |
 | `channelsStatesMap` | `$STORE.agent.channelsStatesMap` | Current status (granular state model). Required for the status display. |
 | `taskMap` | `$STORE.agentContact.taskMap` | Restores the call panel if the page opens during a call. |
 | `isOutboundEnabledForAgent` | `$STORE.agent.isOutboundEnabledForAgent` | "Call back" is hidden when outdial is off for the agent. |
@@ -47,7 +47,7 @@ in the SDK's agent data.
 | Attribute | Values | Default |
 |---|---|---|
 | `team-dashboard` | `"true"` / `"false"` | `"true"` |
-| `team-refresh-seconds` | number ≥ 15 | `30` |
+| `team-refresh-seconds` | number ≥ 15, only for the buddy-list fallback (the live list needs no polling) | `30` |
 | `call-history` | `"true"` / `"false"` | `"true"` |
 | `mode` | `"recorder"` (headless area only) | — |
 | `theme` | `"dark"` / `"light"` | `"dark"` (agent can change in the widget) |

@@ -43,7 +43,7 @@ const MANY_IDLE_CODES = [
 
 const TEAM = [
   { agentId: 'm-2', agentName: 'Demo Anna (mock)', teamId: TEAM_ID, state: 'Available' },
-  { agentId: 'm-3', agentName: 'Demo Erik (mock)', teamId: TEAM_ID, state: 'Idle', auxCodeId: '00000000-0000-4000-8000-0000000000c2' },
+  { agentId: 'm-3', agentName: 'Demo Erik (mock)', teamId: TEAM_ID, state: 'Idle', auxCodeId: '00000000-0000-4000-8000-0000000000c2', idleCodeName: 'Lunch' },
   { agentId: 'm-4', agentName: 'Demo Maria (mock)', teamId: TEAM_ID, state: 'Available' },
   { agentId: 'm-5', agentName: 'Demo Johan (mock)', teamId: TEAM_ID, state: 'Idle' },
   { agentId: 'm-9', agentName: 'Other Team Agent (mock)', teamId: 'mock-team-2', state: 'Available' },
@@ -51,7 +51,7 @@ const TEAM = [
 
 const MOCK_OUTDIAL_EP = '00000000-0000-4000-8000-0000000000e1';
 
-export function createMockAdapter({ latencyMs = 400, manyCodes = false } = {}) {
+export function createMockAdapter({ latencyMs = 400, manyCodes = false, realtime = true } = {}) {
   const idleCodes = manyCodes ? MANY_IDLE_CODES : IDLE_CODES;
   const listeners = new Map(); // eventName -> Set
   const tasks = new Map();
@@ -59,6 +59,30 @@ export function createMockAdapter({ latencyMs = 400, manyCodes = false } = {}) {
   let failNextDial = false;
   let offline = false;
   let callSeq = 0;
+  // Real-time team data (shape of wxcc.rtd.agentchanneltypestatus / agentchannelstatus).
+  const team = TEAM.map((a) => ({ ...a }));
+  const rtSubs = new Map(); // datasetName -> Set of update callbacks
+
+  function rtItem(a) {
+    return {
+      key: `${a.agentId}:telephony`,
+      operation: 'UPDATE',
+      data: {
+        agentId: a.agentId,
+        agentName: a.agentName,
+        channelType: 'telephony',
+        state: a.state,
+        idleCodeId: a.state === 'Idle' ? a.auxCodeId || '' : '',
+        idleCodeName: a.state === 'Idle' ? a.idleCodeName || '' : '',
+        teamId: a.teamId,
+        teamName: a.teamId === TEAM_ID ? 'Demo Team' : 'Other Team',
+      },
+    };
+  }
+
+  function rtPush(datasetName, datasetValues) {
+    for (const fn of [...(rtSubs.get(datasetName) || [])]) fn({ datasetName, datasetValues, type: 'SubscriptionResponse' });
+  }
   let channel = {
     agentState: 'Idle',
     auxCodeId: idleCodes[0].id,
@@ -166,6 +190,18 @@ export function createMockAdapter({ latencyMs = 400, manyCodes = false } = {}) {
       };
     },
 
+    async subscribeRealtime({ datasetName, update }) {
+      if (!realtime) throw new Error('Mock: real-time data turned off');
+      await wait(Math.min(latencyMs, 50));
+      if (!rtSubs.has(datasetName)) rtSubs.set(datasetName, new Set());
+      rtSubs.get(datasetName).add(update);
+      setTimeout(() => {
+        if (datasetName === 'wxcc.rtd.agentchanneltypestatus') update({ datasetName, datasetValues: team.map(rtItem) });
+        if (datasetName === 'wxcc.rtd.agentchannelstatus') update({ datasetName, datasetValues: [] });
+      });
+      return { unsubscribe: () => rtSubs.get(datasetName).delete(update) };
+    },
+
     async getTaskMap() {
       const m = new Map();
       for (const [id, t] of tasks) m.set(id, { interactionId: id, interaction: interaction(id, t.state) });
@@ -251,6 +287,27 @@ export function createMockAdapter({ latencyMs = 400, manyCodes = false } = {}) {
       },
       failNextStateChange() {
         failNext = true;
+      },
+      /** Live colleague change, e.g. setColleague('m-2', 'Idle', 'Meeting') or setColleague('m-4', 'LoggedOut'). */
+      setColleague(agentId, state, idleCodeName = '') {
+        const a = team.find((x) => x.agentId === agentId);
+        if (!a) return;
+        a.state = state;
+        a.idleCodeName = idleCodeName;
+        a.auxCodeId = '';
+        const item = rtItem(a);
+        if (state === 'LoggedOut') item.operation = 'DELETE';
+        rtPush('wxcc.rtd.agentchanneltypestatus', [item]);
+      },
+      /** Colleague on a call (Engaged) or in wrap-up, via both datasets like Webex. */
+      colleagueCall(agentId, contactStatus = 'connected') {
+        const a = team.find((x) => x.agentId === agentId);
+        if (!a) return;
+        a.state = contactStatus ? (/wrap/i.test(contactStatus) ? 'WrapUp' : 'Engaged') : 'Available';
+        rtPush('wxcc.rtd.agentchannelstatus', [
+          { key: `${agentId}:c`, operation: contactStatus ? 'UPDATE' : 'DELETE', data: { agentId, channelType: 'telephony', interactionId: 'mock-int', contactStatus } },
+        ]);
+        rtPush('wxcc.rtd.agentchanneltypestatus', [rtItem(a)]);
       },
       failNextOutdial() {
         failNextDial = true;
